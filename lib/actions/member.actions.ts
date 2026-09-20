@@ -12,10 +12,13 @@ import {
   subscriptionConfirmationEmailHtml,
   subscriptionConfirmationEmailText,
 } from "@/lib/services/email";
-import { sendWhatsAppMessage, memberWelcomeWhatsAppMessage } from "@/lib/services/whatsapp";
+import { sendMemberWelcomeWhatsApp } from "@/lib/services/whatsapp";
 import { generateInvoicePdfBuffer } from "@/lib/services/invoice-pdf";
 import { uploadBufferToCloudinary } from "@/lib/services/cloudinary";
 import { buildInvoiceDownloadUrl } from "@/lib/services/invoice-links";
+import { notifyActivationIfPaid } from "@/lib/services/subscription-lifecycle";
+import { lifecycleLog } from "@/lib/services/logger";
+import { addDaysToDateString } from "@/lib/utils/datetime";
 import type { ActionResult } from "./auth.actions";
 import type { PaymentMethod } from "@/types/database";
 
@@ -25,11 +28,10 @@ function generateTemporaryPassword() {
   return `${raw.slice(0, 10)}#7`;
 }
 
-function addDays(dateStr: string, days: number) {
-  const d = new Date(dateStr);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
-}
+// Shared, timezone-safe calendar arithmetic. The previous local version applied
+// the *local* setDate() to a UTC-midnight Date and reformatted with
+// toISOString(), shifting end dates by a day on hosts west of UTC.
+const addDays = addDaysToDateString;
 
 // ============================================================================
 // CREATE MEMBER — the "automatic account creation" flow from the spec:
@@ -165,6 +167,13 @@ export async function createMember(input: MemberFormInput): Promise<ActionResult
     return { success: false, error: "Member was created, but the membership record failed to save." };
   }
 
+  lifecycleLog.info("SUBSCRIPTION_CREATED", {
+    membershipId: membership.id,
+    memberId,
+    gymId: actor.gym_id,
+    source: "new_member",
+  });
+
   // 4b. Record the initial payment (if anything was collected up front) and
   //     generate a PDF invoice for it — this is what the "Download Invoice"
   //     button in the subscription confirmation email (step 6) links to.
@@ -268,16 +277,17 @@ export async function createMember(input: MemberFormInput): Promise<ActionResult
         loginUrl: `${appUrl}/login`,
       }),
     }),
-    sendWhatsAppMessage(
-      data.phone,
-      memberWelcomeWhatsAppMessage({
-        memberName: data.fullName,
-        gymName,
-        email: data.email,
-        temporaryPassword,
-        loginUrl: `${appUrl}/login`,
-      })
-    ),
+    // Direct to Meta's Cloud API — no Twilio relay. Uses an approved template
+    // when WHATSAPP_MEMBER_WELCOME_TEMPLATE is set, since a welcome message is
+    // business-initiated and plain text is rejected outside the 24h window.
+    sendMemberWelcomeWhatsApp({
+      phone: data.phone,
+      memberName: data.fullName,
+      gymName,
+      email: data.email,
+      temporaryPassword,
+      loginUrl: `${appUrl}/login`,
+    }),
     sendEmail({
       to: data.email,
       subject: `Your membership at ${gymName} is confirmed`,
@@ -307,6 +317,23 @@ export async function createMember(input: MemberFormInput): Promise<ActionResult
       }),
     }),
   ]);
+
+  // ------------------------------------------------------------------------
+  // WhatsApp "subscription activated" notification.
+  //
+  // THIS PATH PREVIOUSLY SENT NOTHING. createMember() writes the membership and
+  // the first payment row directly instead of going through recordPayment(),
+  // which was the only place the WhatsApp confirmation lived — so brand-new
+  // subscribers, the main "user subscribes" flow, never received it. Only
+  // renewals did.
+  //
+  // notifyActivationIfPaid() re-checks the subscription in the database and
+  // only sends when the period is active AND money has actually been recorded
+  // against it, so a "pay later" signup correctly waits until the first real
+  // payment. Idempotent and non-throwing: a delivery failure here can never
+  // undo the member that was just created.
+  // ------------------------------------------------------------------------
+  await notifyActivationIfPaid(admin, membership.id);
 
   revalidatePath("/dashboard/owner/members");
   revalidatePath("/dashboard/reception/members");

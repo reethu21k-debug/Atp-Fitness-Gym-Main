@@ -1,27 +1,57 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { NutritionPlanDialog } from "./nutrition-plan-dialog";
 import { NutritionPlanEditor } from "./nutrition-plan-editor";
 import type { NutritionPlanWithDetails } from "@/lib/actions/nutrition.actions";
 import type { DietPlanWithDetails } from "@/lib/actions/trainer.actions";
-import { Salad, ChevronDown, ChevronUp } from "lucide-react";
+import { downloadNutritionPdf, type NutritionPdfClientInfo } from "@/lib/utils/nutrition-pdf";
+import { Salad, ChevronDown, ChevronUp, FileDown, Loader2 } from "lucide-react";
 
 export function NutritionPanel({
-  memberId, nutritionPlans, legacyDietPlans,
+  memberId, nutritionPlans, legacyDietPlans, gymName, client,
 }: {
   memberId: string;
   nutritionPlans: NutritionPlanWithDetails[];
   legacyDietPlans: DietPlanWithDetails[];
+  gymName: string;
+  client: NutritionPdfClientInfo;
 }) {
   const [showLegacy, setShowLegacy] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const active = nutritionPlans.filter((p) => p.is_active);
   const inactive = nutritionPlans.filter((p) => !p.is_active);
+  const hasAnyData = nutritionPlans.length > 0 || legacyDietPlans.length > 0;
+
+  async function handleDownloadPdf() {
+    setDownloading(true);
+    try {
+      await downloadNutritionPdf({
+        gymName,
+        client,
+        plans: nutritionPlans,
+        legacyPlans: legacyDietPlans,
+      });
+    } catch {
+      toast.error("Could not generate the nutrition PDF. Please try again.");
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end"><NutritionPlanDialog memberId={memberId} /></div>
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button variant="outline" size="sm" onClick={handleDownloadPdf} disabled={downloading || !hasAnyData}>
+          {downloading ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : <FileDown className="h-4 w-4 shrink-0" />}
+          <span className="hidden sm:inline">Download Complete Nutrition PDF</span>
+          <span className="sm:hidden">Download PDF</span>
+        </Button>
+        <NutritionPlanDialog memberId={memberId} />
+      </div>
 
       {nutritionPlans.length === 0 ? (
         <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed p-10 text-center text-muted-foreground">

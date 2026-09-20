@@ -66,3 +66,13 @@ export async function getCurrentProfile() {
 
   return profile;
 }
+
+/** Name of the gym the current user belongs to, for headers on generated documents (invoices, PDFs). */
+export async function getCurrentGymName(): Promise<string> {
+  const supabase = await createClient();
+  const profile = await getCurrentProfile();
+  if (!profile?.gym_id) return "ATP Fitness";
+
+  const { data: gym } = await supabase.from("gyms").select("name").eq("id", profile.gym_id).single();
+  return gym?.name ?? "ATP Fitness";
+}

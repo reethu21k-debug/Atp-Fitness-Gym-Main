@@ -12,8 +12,24 @@ interface ThemeContextValue {
 
 const ThemeContext = React.createContext<ThemeContextValue | undefined>(undefined);
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = React.useState<Theme>('system');
+/**
+ * Props mirror the next-themes API so `app/layout.tsx` can pass
+ * `attribute` / `defaultTheme` / `enableSystem` without a type error. This is a
+ * hand-rolled provider (it writes the `dark` class directly), so only
+ * `defaultTheme` is actually honoured; the others are accepted for
+ * drop-in compatibility.
+ */
+export interface ThemeProviderProps {
+  children: React.ReactNode;
+  attribute?: string;
+  defaultTheme?: Theme;
+  enableSystem?: boolean;
+  disableTransitionOnChange?: boolean;
+  storageKey?: string;
+}
+
+export function ThemeProvider({ children, defaultTheme = 'system' }: ThemeProviderProps) {
+  const [theme, setThemeState] = React.useState<Theme>(defaultTheme);
   const [resolvedTheme, setResolvedTheme] = React.useState<'light' | 'dark'>('light');
 
   // Sync with what the boot script already applied

@@ -7,7 +7,8 @@ import {
   renewalReminderEmailSubject,
   type RenewalReminderKind,
 } from "@/lib/services/email";
-import { sendSubscriptionExpiredWhatsApp } from "@/lib/services/whatsapp-cloud";
+import { authorizeCronRequest } from "@/lib/utils/cron-auth";
+import { todayInTimeZone, addDaysToDateString, DEFAULT_TIMEZONE } from "@/lib/utils/datetime";
 import type { ReminderType } from "@/types/database";
 
 // Node runtime -- nodemailer (the Gmail SMTP transport used everywhere else
@@ -27,6 +28,9 @@ export const runtime = "nodejs";
  * Each membership + window is only ever sent once, tracked in
  * renewal_reminder_log (same table/shape the Edge Function already uses),
  * so re-running this on the same day is safe.
+ *
+ * SCOPE: renewal REMINDERS only (email). The subscription-ended WhatsApp
+ * message is owned by /api/cron/subscription-expiry.
  */
 
 type Window = { type: Extract<ReminderType, "before_7d" | "before_3d" | "before_1d" | "on_expiry">; offsetDays: number; kind: RenewalReminderKind };
@@ -38,15 +42,19 @@ const WINDOWS: Window[] = [
   { type: "on_expiry", offsetDays: 0, kind: "on_expiry" },
 ];
 
-function dateOffset(days: number) {
-  const d = new Date();
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
+// Reminder windows are matched against `end_date`, a Postgres `date`. "Today"
+// must therefore be today in the gym's local calendar, not in UTC. The previous
+// UTC version meant that for the first 5.5 hours of every IST day the job
+// compared against yesterday's date, so the 7d/3d/1d windows were consistently
+// off by one.
+function dateOffset(days: number, timeZone: string = DEFAULT_TIMEZONE) {
+  return addDaysToDateString(todayInTimeZone(timeZone), days);
 }
 
 export async function GET(req: NextRequest) {
-  const cronSecret = req.headers.get("x-cron-secret");
-  if (!process.env.CRON_SECRET || cronSecret !== process.env.CRON_SECRET) {
+  // Shared helper: constant-time comparison, accepts both the pg_cron
+  // `x-cron-secret` header and Vercel Cron's `Authorization: Bearer` form.
+  if (!authorizeCronRequest(req.headers).ok) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -123,23 +131,23 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      // WhatsApp via Meta's Cloud API — only for the day-of-expiry window,
-      // asking the member to renew. Best-effort: doesn't block the email path.
-      if (window.kind === "on_expiry" && member.phone) {
-        const whatsappResult = await sendSubscriptionExpiredWhatsApp({
-          phone: member.phone,
-          memberName: member.full_name,
-          gymName,
-          planName,
-          endDate: m.end_date,
-          renewUrl: `${appUrl}/dashboard/member/membership`,
-        });
-        if (whatsappResult.success) sentAny = true;
-      }
-
+      // NOTE: the WhatsApp "subscription ended" message is NOT sent from here.
+      // It used to be, piggybacked on the on_expiry window, which made it
+      // unreliable in two ways: it fired on `end_date = today` (the member's
+      // last VALID day, not after expiry), and it was matched by exact date
+      // equality, so a single missed run lost that member's message forever.
+      // It now belongs to /api/cron/subscription-expiry, which expires the
+      // period atomically and sends through the idempotent notification ledger.
       if (!sentAny) continue;
 
-      await admin.from("renewal_reminder_log").insert({ membership_id: m.id, reminder_type: window.type });
+      // The de-dupe read above is advisory; this unique-constraint-aware insert
+      // is what actually prevents a double send when two runs overlap.
+      const { error: logError } = await admin
+        .from("renewal_reminder_log")
+        .insert({ membership_id: m.id, reminder_type: window.type });
+      if (logError) {
+        console.error(`renewal-reminders: could not log ${window.type} for ${m.id}:`, logError.message);
+      }
       sentCount++;
     }
     results[window.type] = sentCount;

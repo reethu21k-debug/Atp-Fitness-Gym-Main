@@ -24,23 +24,25 @@ const THEME_BOOT_SCRIPT = `
 (function() {
   try {
     var stored = localStorage.getItem('atp-fitness-theme');
-    var theme = stored || 'system';
-    var resolved = theme === 'system'
-      ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-      : theme;
-    if (resolved === 'dark') document.documentElement.classList.add('dark');
+    var theme = stored || 'light'; 
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
   } catch (e) {}
 })();
 `;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className="light">
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
       </head>
-      <body className={`${inter.variable} font-sans`}>
-        <ThemeProvider>
+      {/* Added explicit background and text color classes below */}
+      <body className={`${inter.variable} font-sans bg-white text-[#1A1A1A] min-h-screen`}>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
           <QueryProvider>
             <Preloader />
             {children}

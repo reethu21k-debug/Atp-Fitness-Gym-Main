@@ -42,7 +42,7 @@ This applies `0016_marketing.sql` and `0024_marketing_smtp_dispatch.sql` on
 top of Parts 1–9. No Resend account or `RESEND_API_KEY` is needed — Marketing
 reuses the `GMAIL_SMTP_USER` / `GMAIL_SMTP_APP_PASSWORD` / `EMAIL_FROM_NAME`
 variables already configured for subscription/welcome emails, plus the
-`TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_WHATSAPP_FROM` variables
+`WHATSAPP_CLOUD_API_TOKEN` / `WHATSAPP_CLOUD_PHONE_NUMBER_ID` variables
 for the WhatsApp channel.
 
 ### 2. Replace the placeholders in migration 0024
@@ -68,7 +68,8 @@ of the normal Next.js app.
   `campaign_recipients` row per person (a unique index prevents the same
   person ever being inserted twice for the same campaign, so a re-run is
   always safe), sends email via `sendEmail()` (Gmail SMTP) and WhatsApp via
-  Twilio, and updates both the recipient row and the campaign's aggregate
+  the Meta WhatsApp Cloud API, and updates both the recipient row and the
+  campaign's aggregate
   counters (`recipients_sent`, `recipients_failed`, `status`). Each
   recipient's `error_message` holds the actual SMTP failure reason when a
   send fails, and open/click tracking (`opens_count`, `clicks_count`, the

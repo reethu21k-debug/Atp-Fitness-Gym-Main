@@ -2,7 +2,8 @@
 
 This walks through taking GymOS from a local checkout to a live, working
 deployment: Supabase (database + auth + storage + edge functions), Cloudinary
-(images), Resend + Twilio (notifications), and Vercel (frontend).
+(images), SMTP email + Meta WhatsApp Cloud API (notifications), and Vercel
+(frontend).
 
 ---
 
@@ -85,9 +86,9 @@ runtime, not on Vercel):
 ```bash
 supabase secrets set CRON_SECRET=<same value used in the cron migrations above>
 supabase secrets set RESEND_API_KEY=<your resend key>
-supabase secrets set TWILIO_ACCOUNT_SID=<...>
-supabase secrets set TWILIO_AUTH_TOKEN=<...>
-supabase secrets set TWILIO_WHATSAPP_FROM=<...>
+supabase secrets set WHATSAPP_CLOUD_API_TOKEN=<...>
+supabase secrets set WHATSAPP_CLOUD_PHONE_NUMBER_ID=<...>
+supabase secrets set WHATSAPP_CLOUD_API_VERSION=v21.0
 ```
 
 (`supabase secrets set` applies to all deployed functions in the project;
@@ -111,7 +112,7 @@ run it once, not once per function.)
 
 ---
 
-## 3. Set up Resend (email) and Twilio (WhatsApp/SMS)
+## 3. Set up email (SMTP) and WhatsApp (Meta Cloud API)
 
 - **Resend**: create an account at [resend.com](https://resend.com), verify
   a sending domain, create an API key → `RESEND_API_KEY`. Set `EMAIL_FROM`
@@ -134,11 +135,21 @@ run it once, not once per function.)
   Set the env vars in **both** places (your app's `.env`/Vercel, and
   `supabase secrets`) — they're independent runtimes and don't share
   environment variables.
-- **Twilio**: create an account, get your Account SID and Auth Token. For
-  WhatsApp, use the Twilio WhatsApp Sandbox for testing or apply for a
-  production WhatsApp Business sender for real deployments — either way,
-  set `TWILIO_WHATSAPP_FROM` to the `whatsapp:+1...` number Twilio gives
-  you. Set `TWILIO_SMS_FROM` if you also want plain SMS fallback.
+- **WhatsApp (Meta Cloud API)**: at developers.facebook.com create an app and
+  add the "WhatsApp" product. From WhatsApp > API Setup copy the access token
+  (use a permanent System User token from Business Settings for production, not
+  the 24h test token) and the **Phone number ID** — not the phone number
+  itself. Set `WHATSAPP_CLOUD_API_TOKEN` and `WHATSAPP_CLOUD_PHONE_NUMBER_ID`.
+
+  Then create and get approval for your Message Templates in WhatsApp Manager
+  and set `WHATSAPP_SUBSCRIPTION_CONFIRMED_TEMPLATE`,
+  `WHATSAPP_SUBSCRIPTION_EXPIRED_TEMPLATE` and (optionally)
+  `WHATSAPP_MEMBER_WELCOME_TEMPLATE` / `WHATSAPP_STAFF_WELCOME_TEMPLATE`.
+  Business-initiated messages outside the 24-hour session window are rejected
+  without an approved template — see docs/WHATSAPP_SUBSCRIPTION_LIFECYCLE.md.
+
+  There is no Twilio account or relay anywhere in this project; every WhatsApp
+  message goes directly to graph.facebook.com.
 
 ---
 
@@ -210,7 +221,7 @@ first** — it creates real auth users with a shared demo password.
 - [ ] Cloudinary upload preset name matches
       `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET`
 - [ ] Resend sending domain verified; test a real member-registration email
-- [ ] Twilio WhatsApp sender approved (or sandbox joined) for your test
+- [ ] WhatsApp message templates approved in WhatsApp Manager for your test
       numbers; test a real registration WhatsApp message
 - [ ] `QR_SECRET` and `CRON_SECRET` are long random values, **not** copied
       from this repo's `.env.example` or any development environment

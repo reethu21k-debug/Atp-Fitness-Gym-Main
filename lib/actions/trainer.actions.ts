@@ -121,27 +121,24 @@ export interface WorkoutPlanWithDetails extends WorkoutPlan {
 
 export async function getWorkoutPlans(memberId: string): Promise<WorkoutPlanWithDetails[]> {
   const supabase = await createClient();
+  // Single nested-select round trip instead of 3 sequential queries
+  // (plans -> days -> exercises). Children are sorted in JS since embedded
+  // resources come back unordered by default.
   const { data: plans } = await supabase
     .from("workout_plans")
-    .select("*")
+    .select("*, days:workout_days(*, exercises:workout_exercises(*))")
     .eq("member_id", memberId)
     .order("created_at", { ascending: false });
 
-  if (!plans?.length) return [];
-
-  const planIds = plans.map((p) => p.id);
-  const { data: days } = await supabase.from("workout_days").select("*").in("workout_plan_id", planIds).order("day_order");
-  const dayIds = (days ?? []).map((d) => d.id);
-  const { data: exercises } = dayIds.length
-    ? await supabase.from("workout_exercises").select("*").in("workout_day_id", dayIds).order("order_index")
-    : { data: [] };
-
-  return plans.map((plan) => ({
-    ...plan,
-    days: (days ?? [])
-      .filter((d) => d.workout_plan_id === plan.id)
-      .map((d) => ({ ...d, exercises: (exercises ?? []).filter((e) => e.workout_day_id === d.id) })),
-  }));
+  return ((plans ?? []) as unknown as (WorkoutPlan & { days: (WorkoutDay & { exercises: WorkoutExercise[] })[] })[]).map(
+    (plan) => ({
+      ...plan,
+      days: (plan.days ?? [])
+        .slice()
+        .sort((a, b) => a.day_order - b.day_order)
+        .map((d) => ({ ...d, exercises: (d.exercises ?? []).slice().sort((a, b) => a.order_index - b.order_index) })),
+    })
+  );
 }
 
 // ============================================================================
@@ -225,18 +222,17 @@ export interface DietPlanWithDetails extends DietPlan {
 
 export async function getDietPlans(memberId: string): Promise<DietPlanWithDetails[]> {
   const supabase = await createClient();
+  // Single nested-select round trip instead of 2 sequential queries.
   const { data: plans } = await supabase
     .from("diet_plans")
-    .select("*")
+    .select("*, meals:diet_meals(*)")
     .eq("member_id", memberId)
     .order("created_at", { ascending: false });
 
-  if (!plans?.length) return [];
-
-  const planIds = plans.map((p) => p.id);
-  const { data: meals } = await supabase.from("diet_meals").select("*").in("diet_plan_id", planIds).order("order_index");
-
-  return plans.map((plan) => ({ ...plan, meals: (meals ?? []).filter((m) => m.diet_plan_id === plan.id) }));
+  return ((plans ?? []) as unknown as (DietPlan & { meals: DietMeal[] })[]).map((plan) => ({
+    ...plan,
+    meals: (plan.meals ?? []).slice().sort((a, b) => a.order_index - b.order_index),
+  }));
 }
 
 // ============================================================================

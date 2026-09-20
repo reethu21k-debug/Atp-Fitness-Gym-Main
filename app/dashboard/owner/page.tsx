@@ -1,19 +1,23 @@
 import Link from "next/link";
 import { Users, UserCheck, Clock, AlertTriangle, Plus } from "lucide-react";
 import { getMemberDashboardStats } from "@/lib/actions/member.actions";
+import { getCurrentProfile } from "@/lib/utils/permissions";
+import { getWelcomeMessage } from "@/lib/utils/welcome";
 import { StatCard } from "@/components/features/dashboard/stat-card";
 import { Button } from "@/components/ui/button";
 
 export const metadata = { title: "Dashboard — ATP Fitness" };
 
 export default async function OwnerDashboardPage() {
-  const stats = await getMemberDashboardStats();
+  const [stats, profile] = await Promise.all([getMemberDashboardStats(), getCurrentProfile()]);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Overview</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {profile ? getWelcomeMessage(profile.role, profile.full_name) : "Overview"}
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">Here's how your gym is doing today.</p>
         </div>
         <Button asChild className="sm:shrink-0">

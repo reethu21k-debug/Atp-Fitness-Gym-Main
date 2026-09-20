@@ -23,7 +23,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </div>
       </div>
 
-      <div className="relative hidden overflow-hidden bg-gradient-to-br from-primary via-red-700 to-neutral-900 lg:flex lg:flex-col lg:justify-between lg:p-16">
+      <div className="relative hidden overflow-hidden bg-gradient-to-br from-primary via-accent to-[#1A1006] lg:flex lg:flex-col lg:justify-between lg:p-16">
         <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_1px_1px,white_1px,transparent_0)] [background-size:24px_24px]" />
         <div className="relative z-10">
           <p className="text-sm font-medium text-white/70">Members, trainers, and staff — one portal</p>

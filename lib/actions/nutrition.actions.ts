@@ -377,34 +377,34 @@ export interface NutritionPlanWithDetails extends NutritionPlan {
 
 export async function getNutritionPlans(memberId: string): Promise<NutritionPlanWithDetails[]> {
   const supabase = await createClient();
+  // Single nested-select round trip instead of 3 sequential queries
+  // (plans -> meals -> items+food+nutrition). Rows are sorted in JS since
+  // embedded resources come back unordered by default.
   const { data: plans } = await supabase
     .from("nutrition_plans")
-    .select("*")
+    .select("*, meals:nutrition_meals(*, items:nutrition_meal_items(*, food:foods(*, nutrition:food_nutrition(*))))")
     .eq("member_id", memberId)
     .order("created_at", { ascending: false });
-  if (!plans?.length) return [];
 
-  const planIds = plans.map((p) => p.id);
-  const { data: meals } = await supabase.from("nutrition_meals").select("*").in("nutrition_plan_id", planIds).order("order_index");
-  const mealIds = (meals ?? []).map((m) => m.id);
-  const { data: items } = mealIds.length
-    ? await supabase
-        .from("nutrition_meal_items")
-        .select("*, food:foods(*, nutrition:food_nutrition(*))")
-        .in("meal_id", mealIds)
-        .order("order_index")
-    : { data: [] };
+  type RawItem = NutritionMealItem & { food: any };
+  type RawMeal = NutritionMeal & { items: RawItem[] };
+  type RawPlan = NutritionPlan & { meals: RawMeal[] };
 
-  const normalizedItems: MealItemWithFood[] = (items ?? []).map((it: any) => ({
-    ...it,
-    food: { ...it.food, nutrition: Array.isArray(it.food?.nutrition) ? it.food.nutrition[0] : it.food?.nutrition },
-  }));
-
-  return plans.map((plan) => ({
+  return ((plans ?? []) as unknown as RawPlan[]).map((plan) => ({
     ...plan,
-    meals: (meals ?? [])
-      .filter((m) => m.nutrition_plan_id === plan.id)
-      .map((m) => ({ ...m, items: normalizedItems.filter((it) => it.meal_id === m.id) })),
+    meals: (plan.meals ?? [])
+      .slice()
+      .sort((a, b) => a.order_index - b.order_index)
+      .map((meal) => ({
+        ...meal,
+        items: (meal.items ?? [])
+          .slice()
+          .sort((a, b) => a.order_index - b.order_index)
+          .map((it): MealItemWithFood => ({
+            ...it,
+            food: { ...it.food, nutrition: Array.isArray(it.food?.nutrition) ? it.food.nutrition[0] : it.food?.nutrition },
+          })),
+      })),
   }));
 }
 

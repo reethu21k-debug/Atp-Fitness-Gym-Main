@@ -4,18 +4,20 @@ import { revalidatePath } from "next/cache";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { requirePermission, requireRole, getCurrentProfile, PermissionError } from "@/lib/utils/permissions";
 import { sendEmail, subscriptionConfirmationEmailHtml, subscriptionConfirmationEmailText } from "@/lib/services/email";
-import { sendSubscriptionConfirmationWhatsApp } from "@/lib/services/whatsapp-cloud";
+import { notifyActivationIfPaid } from "@/lib/services/subscription-lifecycle";
+import { lifecycleLog } from "@/lib/services/logger";
+import { addDaysToDateString } from "@/lib/utils/datetime";
 import { generateInvoicePdfBuffer } from "@/lib/services/invoice-pdf";
 import { uploadBufferToCloudinary } from "@/lib/services/cloudinary";
 import { buildInvoiceDownloadUrl } from "@/lib/services/invoice-links";
 import type { ActionResult } from "./auth.actions";
 import type { PaymentMethod } from "@/types/database";
 
-function addDays(dateStr: string, days: number) {
-  const d = new Date(dateStr);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
-}
+// Calendar arithmetic is delegated to lib/utils/datetime so it can't drift:
+// the previous local implementation parsed the date as UTC midnight, applied
+// the *local* setDate(), then reformatted via toISOString(), which shifts the
+// result by a day on any host running west of UTC.
+const addDays = addDaysToDateString;
 
 function round2(n: number) {
   return Math.round(n * 100) / 100;
@@ -202,21 +204,31 @@ export async function recordPayment(input: RecordPaymentInput): Promise<ActionRe
       });
     }
 
-    // WhatsApp confirmation via Meta's Cloud API — best-effort, mirrors the
-    // email confirmation above and never fails the payment itself.
-    if (member?.phone) {
-      await sendSubscriptionConfirmationWhatsApp({
-        phone: member.phone,
-        memberName: member.full_name ?? "there",
-        gymName: gymDetails?.name ?? "your gym",
-        planName: planName ?? "Membership",
-        durationDays: membershipDurationDays,
-        startDate: membershipStartDate ?? payment.created_at,
-        endDate: membershipEndDate ?? payment.created_at,
-      });
-    }
+
   } catch (invoiceErr) {
     console.error("recordPayment: invoice PDF generation/email failed:", invoiceErr);
+  }
+
+  // ------------------------------------------------------------------------
+  // WhatsApp "subscription activated" notification.
+  //
+  // Keyed on the MEMBERSHIP PERIOD, not on this payment row. That matters:
+  // this function also runs for each EMI installment, for partial payments and
+  // for top-ups, and the previous inline send fired on every one of them — a
+  // 6-installment plan sent six "subscription confirmed" messages.
+  //
+  // notifyActivationIfPaid() re-reads the subscription from the database and
+  // claims a row in subscription_notifications, so no matter how many times
+  // this is reached (double submit, retried request, refreshed page) exactly
+  // one message is ever sent per membership period.
+  //
+  // Deliberately outside the try/catch above and awaited without its result
+  // gating anything: a WhatsApp outage must never fail a payment that has
+  // already been recorded.
+  // ------------------------------------------------------------------------
+  if (input.membershipId) {
+    const admin = createAdminClient();
+    await notifyActivationIfPaid(admin, input.membershipId);
   }
 
   revalidatePath("/dashboard/owner/payments");
@@ -286,6 +298,13 @@ export async function renewMembership(input: RenewMembershipInput): Promise<Acti
     .single();
 
   if (error || !newMembership) return { success: false, error: "Could not create the renewed membership." };
+
+  lifecycleLog.info("SUBSCRIPTION_CREATED", {
+    membershipId: newMembership.id,
+    memberId: input.memberId,
+    gymId: actor.gym_id,
+    source: "renewal",
+  });
 
   if (input.payment) {
     const paymentResult = await recordPayment({

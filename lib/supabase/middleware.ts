@@ -8,8 +8,16 @@ const PUBLIC_ROUTES = [
   "/forgot-password", "/reset-password",
   // Self-authenticating via their own secret header/HMAC -- must stay
   // reachable without a browser session (pg_cron / email links have none).
+  // NOTE: "/api/cron" covers every scheduled job, including
+  // marketing-automation, which was previously missing from this list -- so
+  // middleware redirected it to /login and the job silently never ran.
   "/api/invoices/download",
-  "/api/cron/renewal-reminders",
+  "/api/cron",
+  // CRON_SECRET-authenticated diagnostic endpoint. It used to be skipped by
+  // the middleware matcher entirely, which left it publicly reachable.
+  "/api/test-whatsapp",
+  // Meta delivery-status callbacks, verified by X-Hub-Signature-256 HMAC.
+  "/api/webhooks/",
 ];
 
 const ROLE_HOME: Record<string, string> = {

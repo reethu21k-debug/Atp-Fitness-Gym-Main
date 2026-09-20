@@ -1,0 +1,20 @@
+{
+  "messaging_product": "whatsapp",
+  "to": "919550192069",
+  "type": "template",
+  "template": {
+    "name": "subscription_confirmed",
+    "language": { "code": "en" },
+    "components": [{
+      "type": "body",
+      "parameters": [
+        { "type": "text", "text": "Rithik" },
+        { "type": "text", "text": "Gold Plan" },
+        { "type": "text", "text": "ATP-FITNESS-GYM" },
+        { "type": "text", "text": "30" },
+        { "type": "text", "text": "27 Aug 2026" },
+        { "type": "text", "text": "26 Sep 2026" }
+      ]
+    }]
+  }
+}

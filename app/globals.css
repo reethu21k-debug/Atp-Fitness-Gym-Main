@@ -4,63 +4,93 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 224 71% 4%;
-    --card: 0 0% 100%;
-    --card-foreground: 224 71% 4%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 224 71% 4%;
-    --primary: 4 90% 48%;
+    /* ATP Fitness — Premium White & Orange */
+    --background: 0 0% 100%;        /* #FFFFFF Pure White */
+    --foreground: 0 0% 10%;         /* #1A1A1A Deep Charcoal */
+
+    --card: 27 100% 98%;            /* #FFFAF6 Off White */
+    --card-foreground: 0 0% 10%;
+
+    --popover: 27 100% 98%;
+    --popover-foreground: 0 0% 10%;
+
+    --primary: 25 100% 50%;         /* #FF6A00 Brand Orange */
     --primary-foreground: 0 0% 100%;
-    --secondary: 220 14% 96%;
-    --secondary-foreground: 224 71% 4%;
-    --muted: 220 14% 96%;
-    --muted-foreground: 220 9% 46%;
-    --accent: 4 90% 96%;
-    --accent-foreground: 4 90% 32%;
+
+    --secondary: 29 100% 56%;       /* #FF8A1F Vibrant Orange */
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 60 8% 95%;             /* #F3F3F1 Light Grey */
+    --muted-foreground: 32 10% 38%; /* #6B6258 Warm Gray */
+
+    --accent: 21 100% 45%;          /* #E65100 Deep Orange - hover/active states */
+    --accent-foreground: 0 0% 100%;
+
+    --highlight: 28 100% 85%;       /* #FFD6B3 Soft Peach - badges/subtle highlights */
+    --highlight-foreground: 21 100% 30%;
+
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
     --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 4 90% 48%;
-    --radius: 0.75rem;
+
+    --border: 28 46% 89%;           /* #F0E2D6 warm, subtle border */
+    --input: 28 46% 89%;
+    --ring: 25 100% 50%;            /* #FF6A00 */
+
+    --radius: 1rem;
   }
 
   .dark {
-    --background: 224 20% 6%;
-    --foreground: 210 20% 98%;
-    --card: 224 16% 10%;
-    --card-foreground: 210 20% 98%;
-    --popover: 224 16% 10%;
-    --popover-foreground: 210 20% 98%;
-    --primary: 4 90% 55%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 215 18% 15%;
-    --secondary-foreground: 210 20% 98%;
-    --muted: 215 18% 15%;
-    --muted-foreground: 217 11% 65%;
-    --accent: 215 18% 19%;
-    --accent-foreground: 4 90% 80%;
+    /* Deep Espresso section, still orange-led */
+    --background: 20 16% 8%;        /* #17110C Dark Section */
+    --foreground: 27 100% 98%;      /* #FFFAF6 Off White text */
+
+    --card: 20 15% 12%;
+    --card-foreground: 27 100% 98%;
+
+    --popover: 20 15% 12%;
+    --popover-foreground: 27 100% 98%;
+
+    --primary: 25 100% 55%;         /* brighter Brand Orange on dark */
+    --primary-foreground: 0 0% 10%;
+
+    --secondary: 29 100% 56%;       /* #FF8A1F */
+    --secondary-foreground: 0 0% 10%;
+
+    --muted: 20 12% 18%;
+    --muted-foreground: 28 15% 65%;
+
+    --accent: 21 100% 55%;          /* Deep Orange, lifted for dark */
+    --accent-foreground: 0 0% 100%;
+
+    --highlight: 28 55% 28%;        /* muted-down peach for dark bg */
+    --highlight-foreground: 28 100% 90%;
+
     --destructive: 0 63% 50%;
     --destructive-foreground: 0 0% 100%;
     --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
-    --border: 215 18% 19%;
-    --input: 215 18% 19%;
-    --ring: 4 90% 55%;
-  }
 
+    --border: 20 12% 20%;
+    --input: 20 12% 20%;
+    --ring: 25 100% 55%;
+  }
+}
+
+@layer base {
   * {
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply antialiased;
+    /* Native CSS fallback to guarantee the colors apply even if Tailwind config is missing mappings */
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
   }
 }
 

@@ -17,7 +17,7 @@ const TABS = ["Workouts", "Nutrition", "Progress"] as const;
 type Tab = (typeof TABS)[number];
 
 export function ClientWorkspace({
-  member, heightCm, workoutPlans, dietPlans, nutritionPlans, progress,
+  member, heightCm, workoutPlans, dietPlans, nutritionPlans, progress, gymName,
 }: {
   member: MembersOverviewRow;
   heightCm: number | null;
@@ -25,6 +25,7 @@ export function ClientWorkspace({
   dietPlans: DietPlanWithDetails[];
   nutritionPlans: NutritionPlanWithDetails[];
   progress: MemberProgress[];
+  gymName: string;
 }) {
   const [tab, setTab] = useState<Tab>("Workouts");
   const latestWeight = progress.length > 0 ? progress[progress.length - 1]?.weight_kg ?? null : null;
@@ -99,7 +100,19 @@ export function ClientWorkspace({
       )}
 
       {tab === "Nutrition" && (
-        <NutritionPanel memberId={member.profile_id} nutritionPlans={nutritionPlans} legacyDietPlans={dietPlans} />
+        <NutritionPanel
+          memberId={member.profile_id}
+          nutritionPlans={nutritionPlans}
+          legacyDietPlans={dietPlans}
+          gymName={gymName}
+          client={{
+            name: member.full_name,
+            dateOfBirth: member.date_of_birth,
+            gender: member.gender,
+            heightCm,
+            weightKg: latestWeight,
+          }}
+        />
       )}
 
       {tab === "Progress" && (

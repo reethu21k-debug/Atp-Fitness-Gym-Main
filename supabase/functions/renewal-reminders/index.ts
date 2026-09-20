@@ -10,9 +10,10 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const EMAIL_FROM = Deno.env.get("EMAIL_FROM") ?? "ATP Fitness <no-reply@atpfitness.in>";
-const TWILIO_ACCOUNT_SID = Deno.env.get("TWILIO_ACCOUNT_SID");
-const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN");
-const TWILIO_WHATSAPP_FROM = Deno.env.get("TWILIO_WHATSAPP_FROM");
+const WHATSAPP_TOKEN = Deno.env.get("WHATSAPP_CLOUD_API_TOKEN");
+const WHATSAPP_PHONE_NUMBER_ID = Deno.env.get("WHATSAPP_CLOUD_PHONE_NUMBER_ID");
+const WHATSAPP_API_VERSION = Deno.env.get("WHATSAPP_CLOUD_API_VERSION") ?? "v21.0";
+const WHATSAPP_COUNTRY_CODE = Deno.env.get("WHATSAPP_DEFAULT_COUNTRY_CODE") ?? "91";
 const APP_URL = Deno.env.get("NEXT_PUBLIC_APP_URL") ?? "https://app.atpfitness.in";
 
 type Window = { type: string; offsetDays: number; kind: "before" | "after" };
@@ -44,21 +45,45 @@ async function sendEmail(to: string, subject: string, html: string) {
   }).catch((err) => console.error("resend send failed", err));
 }
 
+// Direct to Meta's WhatsApp Cloud API. This function previously relayed
+// through Twilio; there is no Twilio account or sender involved anywhere in
+// the project any more.
+//
+// Meta wants digits only, country code first, no "+" or separators. A bare
+// 10-digit national number gets the default country code prepended.
+function normalizePhone(phone: string): string | null {
+  let digits = phone.replace(/^whatsapp:/i, "").replace(/^00/, "").replace(/\D/g, "");
+  if (!digits) return null;
+  if (digits.length === 11 && digits.startsWith("0")) digits = digits.slice(1);
+  if (digits.length === 10) digits = WHATSAPP_COUNTRY_CODE + digits;
+  if (digits.length < 8 || digits.length > 15) return null;
+  return digits;
+}
+
 async function sendWhatsApp(toPhone: string, body: string) {
-  if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN) return;
-  const auth = btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`);
-  await fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`, {
+  if (!WHATSAPP_TOKEN || !WHATSAPP_PHONE_NUMBER_ID) return;
+
+  const to = normalizePhone(toPhone);
+  if (!to) {
+    console.error("whatsapp send skipped: recipient is not a valid number");
+    return;
+  }
+
+  await fetch(`https://graph.facebook.com/${WHATSAPP_API_VERSION}/${WHATSAPP_PHONE_NUMBER_ID}/messages`, {
     method: "POST",
     headers: {
-      Authorization: `Basic ${auth}`,
-      "Content-Type": "application/x-www-form-urlencoded",
+      Authorization: `Bearer ${WHATSAPP_TOKEN}`,
+      "Content-Type": "application/json",
     },
-    body: new URLSearchParams({
-      From: TWILIO_WHATSAPP_FROM ?? "",
-      To: `whatsapp:${toPhone}`,
-      Body: body,
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to,
+      type: "text",
+      text: { body, preview_url: true },
     }),
-  }).catch((err) => console.error("twilio send failed", err));
+    // Never log the error object verbatim — it can echo the bearer token.
+  }).catch((err) => console.error("whatsapp send failed:", err instanceof Error ? err.message : "unknown"));
 }
 
 Deno.serve(async (req) => {

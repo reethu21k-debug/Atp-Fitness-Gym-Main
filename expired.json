@@ -1,0 +1,18 @@
+{
+  "messaging_product": "whatsapp",
+  "to": "919550192069",
+  "type": "template",
+  "template": {
+    "name": "subscription_expired",
+    "language": { "code": "en" },
+    "components": [{
+      "type": "body",
+      "parameters": [
+        { "type": "text", "text": "Rithik" },
+        { "type": "text", "text": "Gold" },
+        { "type": "text", "text": "ATP-FITNESS-GYM" },
+        { "type": "text", "text": "26 Aug 2026" }
+      ]
+    }]
+  }
+}

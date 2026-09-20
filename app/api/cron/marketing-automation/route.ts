@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { runMarketingAutomation } from "@/lib/services/marketing-dispatch";
+import { authorizeCronRequest } from "@/lib/utils/cron-auth";
 
 // Node runtime -- nodemailer (the Gmail SMTP transport used everywhere else
 // in this app) doesn't run on the Edge runtime.
@@ -17,8 +18,10 @@ export const runtime = "nodejs";
  * path.
  */
 export async function GET(req: NextRequest) {
-  const cronSecret = req.headers.get("x-cron-secret");
-  if (!process.env.CRON_SECRET || cronSecret !== process.env.CRON_SECRET) {
+  // Shared helper: constant-time comparison (the previous `!==` leaked the
+  // secret through response timing) and accepts both the pg_cron
+  // `x-cron-secret` header and Vercel Cron's `Authorization: Bearer` form.
+  if (!authorizeCronRequest(req.headers).ok) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

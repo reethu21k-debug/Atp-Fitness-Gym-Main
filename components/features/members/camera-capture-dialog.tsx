@@ -125,26 +125,47 @@ export function CameraCaptureDialog({ open, onOpenChange, onCapture }: CameraCap
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md gap-6 p-6">
         <DialogHeader>
-          <DialogTitle>Take a photo</DialogTitle>
+          <DialogTitle className="text-xl">Take a photo</DialogTitle>
           <DialogDescription>
-            {capturedUrl ? "Review your photo below." : "Line up the shot, then tap Capture."}
+            {capturedUrl ? "Review your photo below before saving." : "Line up your shot, then tap Capture."}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl bg-black">
+        {/* Camera Viewfinder */}
+        <div className="group relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-2xl bg-black shadow-inner ring-1 ring-border/20">
           {error ? (
-            <p className="p-6 text-center text-sm text-destructive">{error}</p>
+            <div className="flex flex-col items-center justify-center gap-3 p-6 text-center">
+              <div className="rounded-full bg-destructive/20 p-3">
+                <Camera className="h-6 w-6 text-destructive" />
+              </div>
+              <p className="text-sm font-medium text-destructive">{error}</p>
+            </div>
           ) : capturedUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={capturedUrl} alt="Captured preview" className="h-full w-full object-cover" />
+            <img src={capturedUrl} alt="Captured preview" className="h-full w-full object-cover transition-opacity duration-300" />
           ) : (
             <>
               <video ref={videoRef} autoPlay playsInline muted className="h-full w-full object-cover" />
+              
+              {/* Viewfinder overlay corners */}
+              {!starting && (
+                <div className="pointer-events-none absolute inset-0 p-6 opacity-60 transition-opacity group-hover:opacity-100">
+                  <div className="absolute left-6 top-6 h-10 w-10 rounded-tl-xl border-l-4 border-t-4 border-white/70" />
+                  <div className="absolute right-6 top-6 h-10 w-10 rounded-tr-xl border-r-4 border-t-4 border-white/70" />
+                  <div className="absolute bottom-6 left-6 h-10 w-10 rounded-bl-xl border-b-4 border-l-4 border-white/70" />
+                  <div className="absolute bottom-6 right-6 h-10 w-10 rounded-br-xl border-b-4 border-r-4 border-white/70" />
+                </div>
+              )}
+
+              {/* Loading Overlay */}
               {starting && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                  <Loader2 className="h-6 w-6 animate-spin text-white" />
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-black/60 backdrop-blur-sm transition-all">
+                  <Loader2 className="h-8 w-8 animate-spin text-white/90" />
+                  <span className="animate-pulse text-sm font-medium tracking-wide text-white/90">
+                    Starting camera...
+                  </span>
                 </div>
               )}
             </>
@@ -154,25 +175,31 @@ export function CameraCaptureDialog({ open, onOpenChange, onCapture }: CameraCap
         {/* Hidden canvas used only to grab a still frame from the video stream. */}
         <canvas ref={canvasRef} className="hidden" />
 
-        <div className="flex justify-end gap-2">
+        {/* Actions */}
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end sm:gap-2 mt-2">
           {error ? (
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => onOpenChange(false)}>
               Close
             </Button>
           ) : capturedUrl ? (
-            <>
-              <Button variant="outline" onClick={handleRetake}>
-                <RotateCcw className="h-4 w-4" />
+            <div className="flex w-full gap-3 sm:w-auto sm:gap-2">
+              <Button variant="outline" className="flex-1 sm:flex-none" onClick={handleRetake}>
+                <RotateCcw className="mr-2 h-4 w-4" />
                 Retake
               </Button>
-              <Button onClick={handleUsePhoto}>
-                <Check className="h-4 w-4" />
+              <Button className="flex-1 sm:flex-none" onClick={handleUsePhoto}>
+                <Check className="mr-2 h-4 w-4" />
                 Use photo
               </Button>
-            </>
+            </div>
           ) : (
-            <Button onClick={handleCapture} disabled={starting}>
-              <Camera className="h-4 w-4" />
+            <Button 
+              size="lg" 
+              className="w-full font-semibold sm:w-auto" 
+              onClick={handleCapture} 
+              disabled={starting}
+            >
+              <Camera className="mr-2 h-5 w-5" />
               Capture
             </Button>
           )}

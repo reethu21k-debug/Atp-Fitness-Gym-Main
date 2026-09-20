@@ -1,4 +1,5 @@
 import { sendEmail } from "@/lib/services/email";
+import { sendWhatsAppCloudText } from "@/lib/services/whatsapp-cloud";
 import { fillMessageTemplate, isMonthDayMatch } from "@/lib/utils/marketing-helpers";
 import type { createAdminClient } from "@/lib/supabase/server";
 
@@ -29,9 +30,6 @@ import type { createAdminClient } from "@/lib/supabase/server";
 type AdminClient = ReturnType<typeof createAdminClient>;
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.atpfitness.in";
-const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
-const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
-const TWILIO_WHATSAPP_FROM = process.env.TWILIO_WHATSAPP_FROM;
 
 interface SendResult {
   success: boolean;
@@ -69,27 +67,29 @@ async function sendMarketingEmail(to: string, subject: string, html: string): Pr
   return { success: false, error: "error" in result && result.error ? result.error : "Email send failed" };
 }
 
+/**
+ * Campaign WhatsApp send — direct to Meta's Cloud API.
+ *
+ * Previously went through Twilio's REST API, which relayed to WhatsApp on our
+ * behalf. It now uses the same single integration as every other WhatsApp send
+ * in the app (lib/services/whatsapp-cloud.ts), so phone normalisation, error
+ * classification and token redaction are shared rather than reimplemented.
+ *
+ * Marketing campaigns are business-initiated, so Meta only accepts free-form
+ * text from recipients inside the 24-hour session window. Broadcast campaigns
+ * to a cold audience require an approved Marketing-category template — this is
+ * a Meta policy constraint, not a limitation of this code.
+ */
 async function sendWhatsApp(toPhone: string, body: string): Promise<SendResult> {
-  if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN) return { success: false, error: "Twilio not configured" };
-  try {
-    const auth = Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString("base64");
-    const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`, {
-      method: "POST",
-      headers: {
-        Authorization: `Basic ${auth}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({
-        From: TWILIO_WHATSAPP_FROM ?? "",
-        To: `whatsapp:${toPhone}`,
-        Body: body,
-      }),
-    });
-    if (!res.ok) return { success: false, error: `Twilio error ${res.status}` };
-    return { success: true };
-  } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : "WhatsApp send failed" };
+  const result = await sendWhatsAppCloudText(toPhone, body);
+  if (result.success) return { success: true };
+  if (result.skipped) {
+    return {
+      success: false,
+      error: "WhatsApp isn't configured on this server (set WHATSAPP_CLOUD_API_TOKEN / WHATSAPP_CLOUD_PHONE_NUMBER_ID).",
+    };
   }
+  return { success: false, error: result.error };
 }
 
 // ============================================================================
@@ -173,7 +173,8 @@ export interface DispatchResult {
 /**
  * Sends a single campaign: resolves the audience, writes one
  * campaign_recipients row per person (unique constraint dedupes a re-run),
- * sends email via the shared SMTP transport and WhatsApp via Twilio, then
+ * sends email via the shared SMTP transport and WhatsApp via Meta's Cloud
+ * API, then
  * updates both the recipient rows and the campaign's aggregate counters.
  */
 export async function dispatchCampaign(admin: AdminClient, campaignId: string): Promise<DispatchResult> {

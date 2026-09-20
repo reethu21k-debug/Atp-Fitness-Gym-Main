@@ -1,0 +1,22 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/cron/subscription-expiry",
+      "schedule": "30 18,2 * * *"
+    },
+    {
+      "path": "/api/cron/renewal-reminders",
+      "schedule": "30 3 * * *"
+    },
+    {
+      "path": "/api/cron/marketing-automation",
+      "schedule": "0 4 * * *"
+    }
+  ],
+  "functions": {
+    "app/api/cron/*/route.ts": {
+      "maxDuration": 300
+    }
+  }
+}

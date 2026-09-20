@@ -66,35 +66,43 @@ export function PhotoUpload({ folder, publicIdPrefix, value, onChange, shape = "
   }
 
   return (
-    <div className="flex items-center gap-4">
-      <div
-        className={cn(
-          "relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden border-2 border-dashed border-input bg-muted",
-          shape === "circle" ? "rounded-full" : "rounded-xl"
-        )}
-      >
-        {value ? (
-          <Image src={value} alt="Uploaded photo" fill sizes="80px" className="object-cover" />
-        ) : (
-          <Camera className="h-6 w-6 text-muted-foreground" />
-        )}
-        {uploading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/70">
-            <Loader2 className="h-5 w-5 animate-spin text-primary" />
-          </div>
-        )}
+    <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-5">
+      {/* 
+        Wrapped the preview area so the X button can sit outside the 
+        overflow-hidden mask, preventing its corners from being clipped.
+      */}
+      <div className="relative shrink-0">
+        <div
+          className={cn(
+            "relative flex h-20 w-20 items-center justify-center overflow-hidden border-2 border-dashed border-input bg-muted",
+            shape === "circle" ? "rounded-full" : "rounded-xl"
+          )}
+        >
+          {value ? (
+            <Image src={value} alt="Uploaded photo" fill sizes="80px" className="object-cover" />
+          ) : (
+            <Camera className="h-6 w-6 text-muted-foreground" />
+          )}
+          {uploading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-background/70">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            </div>
+          )}
+        </div>
+        
         {value && !uploading && (
           <button
             type="button"
             onClick={() => onChange(null)}
-            className="absolute right-0 top-0 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground"
+            className="absolute -right-1.5 -top-1.5 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-sm transition-transform hover:scale-105"
             aria-label="Remove photo"
           >
-            <X className="h-3 w-3" />
+            <X className="h-3.5 w-3.5" />
           </button>
         )}
       </div>
-      <div>
+
+      <div className="flex min-w-0 flex-col gap-1.5">
         {/* Device input: opens the normal file/photo library picker. */}
         <input
           ref={deviceInputRef}
@@ -107,30 +115,40 @@ export function PhotoUpload({ folder, publicIdPrefix, value, onChange, shape = "
           }}
         />
 
-        <p className="mb-1.5 text-sm font-medium text-foreground">{value ? "Change photo" : "Upload photo"}</p>
-        <div className="flex items-center gap-3">
+        <p className="text-sm font-medium text-foreground">
+          {value ? "Change photo" : "Upload photo"}
+        </p>
+        
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <button
             type="button"
             onClick={() => setCameraOpen(true)}
             disabled={uploading}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-primary transition-colors hover:underline disabled:opacity-50"
           >
             <Camera className="h-3.5 w-3.5" />
             Take photo
           </button>
-          <span className="text-muted-foreground">|</span>
+          
+          {/* Hide the separator on very small screens where buttons might wrap */}
+          <span className="hidden text-muted-foreground/60 min-[380px]:inline-block">|</span>
+          
           <button
             type="button"
             onClick={() => deviceInputRef.current?.click()}
             disabled={uploading}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-primary transition-colors hover:underline disabled:opacity-50"
           >
             <ImageUp className="h-3.5 w-3.5" />
             Choose from device
           </button>
         </div>
-        <p className="mt-1 text-xs text-muted-foreground">JPG or PNG, up to 8MB</p>
-        {error && <p className="mt-0.5 text-xs text-destructive">{error}</p>}
+        
+        <p className="text-xs text-muted-foreground">JPG or PNG, up to 8MB</p>
+        
+        {error && (
+          <p className="break-words text-xs text-destructive">{error}</p>
+        )}
       </div>
 
       <CameraCaptureDialog

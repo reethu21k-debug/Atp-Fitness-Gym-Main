@@ -6,7 +6,7 @@ import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { requireRole, getCurrentProfile, PermissionError } from "@/lib/utils/permissions";
 import { staffFormSchema, type StaffFormInput } from "@/lib/validations/staff";
 import { sendEmail, staffWelcomeEmailHtml, staffWelcomeEmailText } from "@/lib/services/email";
-import { sendWhatsAppMessage, staffWelcomeWhatsAppMessage } from "@/lib/services/whatsapp";
+import { sendStaffWelcomeWhatsApp } from "@/lib/services/whatsapp";
 import type { ActionResult } from "./auth.actions";
 import type { Profile } from "@/types/database";
 
@@ -130,17 +130,17 @@ export async function createStaffMember(input: StaffFormInput): Promise<ActionRe
         loginUrl: `${appUrl}/login`,
       }),
     }),
-    sendWhatsAppMessage(
-      data.phone,
-      staffWelcomeWhatsAppMessage({
-        staffName: data.fullName,
-        gymName,
-        role: roleLabel,
-        email: data.email,
-        temporaryPassword,
-        loginUrl: `${appUrl}/login`,
-      })
-    ),
+    // Direct to Meta's Cloud API — no Twilio relay. Uses an approved template
+    // when WHATSAPP_STAFF_WELCOME_TEMPLATE is set.
+    sendStaffWelcomeWhatsApp({
+      phone: data.phone,
+      staffName: data.fullName,
+      gymName,
+      role: roleLabel,
+      email: data.email,
+      temporaryPassword,
+      loginUrl: `${appUrl}/login`,
+    }),
   ]);
 
   revalidatePath("/dashboard/owner/trainers");

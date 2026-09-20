@@ -94,9 +94,10 @@ export function MemberProfileView({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-        <div className="flex items-center gap-4">
-          <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-xl font-medium text-primary">
+      {/* Header Section */}
+      <div className="flex flex-col items-start justify-between gap-5 md:flex-row md:items-center">
+        <div className="flex items-center gap-4 w-full md:w-auto">
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-xl font-medium text-primary">
             {member.avatar_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -108,21 +109,23 @@ export function MemberProfileView({
               member.full_name.charAt(0).toUpperCase()
             )}
           </div>
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight">
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-xl font-semibold tracking-tight">
               {member.full_name}
             </h1>
-            <div className="mt-1 flex items-center gap-2">
+            <div className="mt-1 flex flex-wrap items-center gap-2">
               <MemberStatusBadge status={member.status} />
               {member.plan_name && (
-                <span className="text-sm text-muted-foreground">
+                <span className="truncate text-sm text-muted-foreground">
                   {member.plan_name}
                 </span>
               )}
             </div>
           </div>
         </div>
-        <div className="flex gap-2">
+        
+        {/* Action Buttons */}
+        <div className="flex w-full flex-wrap gap-2 md:w-auto">
           <RenewOrPayDialog
             memberId={member.profile_id}
             currentMembershipId={member.membership_id}
@@ -134,8 +137,9 @@ export function MemberProfileView({
             size="sm"
             onClick={handleDeactivate}
             loading={isPending}
+            className="flex-1 md:flex-none"
           >
-            <UserX className="h-4 w-4" /> Deactivate
+            <UserX className="mr-1.5 h-4 w-4" /> Deactivate
           </Button>
           {canDelete && (
             <Button
@@ -143,20 +147,24 @@ export function MemberProfileView({
               size="sm"
               onClick={handleDelete}
               loading={isPending}
+              className="flex-1 md:flex-none"
             >
-              <Trash2 className="h-4 w-4" /> Delete
+              <Trash2 className="mr-1.5 h-4 w-4" /> Delete
             </Button>
           )}
         </div>
       </div>
 
-      <div className="flex gap-1 rounded-lg bg-muted p-1 w-fit">
+      {/* Tabs */}
+      <div className="flex w-full max-w-full gap-1 overflow-x-auto rounded-lg bg-muted p-1 md:w-fit scrollbar-hide">
         {TABS.map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
-              tab === t ? "bg-background shadow-soft" : "text-muted-foreground"
+            className={`whitespace-nowrap rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+              tab === t 
+                ? "bg-background shadow-soft text-foreground" 
+                : "text-muted-foreground hover:bg-background/50"
             }`}
           >
             {t}
@@ -164,9 +172,10 @@ export function MemberProfileView({
         ))}
       </div>
 
+      {/* Tab Content */}
       {tab === "Overview" && (
         <Card>
-          <CardContent className="grid gap-6 p-6 sm:grid-cols-2">
+          <CardContent className="grid gap-6 p-6 sm:grid-cols-2 lg:grid-cols-3">
             <InfoRow icon={Mail} label="Email" value={member.email} />
             <InfoRow icon={Phone} label="Phone" value={member.phone} />
             <InfoRow
@@ -200,7 +209,7 @@ export function MemberProfileView({
         <div className="space-y-6">
           <Card>
             <CardContent className="p-6">
-              <div className="grid gap-6 sm:grid-cols-2">
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 <InfoRow label="Plan" value={member.plan_name} />
                 <InfoRow label="Payment status" value={member.payment_status} />
                 <InfoRow
@@ -228,16 +237,21 @@ export function MemberProfileView({
                   value={member.amount_paid ? `₹${member.amount_paid}` : null}
                 />
               </div>
+              
               {member.membership_id && (
-                <div className="mt-6 flex flex-col gap-2 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-xs text-muted-foreground">
+                <div className="mt-6 flex flex-col gap-4 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-xs text-muted-foreground sm:max-w-[60%]">
                     Send a renewal reminder email now — works any time,
                     including after expiry.
                   </p>
-                  <div className="flex items-center gap-3">
+                  <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:justify-end">
                     {reminderStatus && (
                       <span
-                        className={`text-xs ${reminderStatus.type === "success" ? "text-success" : "text-destructive"}`}
+                        className={`text-xs ${
+                          reminderStatus.type === "success" 
+                            ? "text-success" 
+                            : "text-destructive"
+                        }`}
                       >
                         {reminderStatus.message}
                       </span>
@@ -247,8 +261,9 @@ export function MemberProfileView({
                       size="sm"
                       onClick={handleSendReminder}
                       loading={isSendingReminder}
+                      className="shrink-0"
                     >
-                      <BellRing className="h-4 w-4" /> Send reminder
+                      <BellRing className="mr-1.5 h-4 w-4" /> Send reminder
                     </Button>
                   </div>
                 </div>
@@ -265,34 +280,34 @@ export function MemberProfileView({
                 No payments recorded yet.
               </p>
             ) : (
-              <div className="overflow-hidden rounded-2xl border bg-card">
+              <div className="w-full overflow-hidden rounded-2xl border bg-card">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
+                  <table className="w-full min-w-[600px] text-left text-sm">
                     <thead className="border-b bg-secondary/40 text-xs text-muted-foreground">
                       <tr>
-                        <th className="px-4 py-2.5">Date</th>
-                        <th className="px-4 py-2.5">Invoice</th>
-                        <th className="px-4 py-2.5">Method</th>
-                        <th className="px-4 py-2.5">Amount</th>
-                        <th className="px-4 py-2.5">Status</th>
+                        <th className="whitespace-nowrap px-4 py-2.5">Date</th>
+                        <th className="whitespace-nowrap px-4 py-2.5">Invoice</th>
+                        <th className="whitespace-nowrap px-4 py-2.5">Method</th>
+                        <th className="whitespace-nowrap px-4 py-2.5">Amount</th>
+                        <th className="whitespace-nowrap px-4 py-2.5">Status</th>
                         <th className="px-4 py-2.5" />
                       </tr>
                     </thead>
                     <tbody>
                       {paymentHistory.map((p) => (
-                        <tr key={p.id} className="border-b last:border-0">
-                          <td className="px-4 py-2.5">
+                        <tr key={p.id} className="border-b last:border-0 hover:bg-muted/50 transition-colors">
+                          <td className="whitespace-nowrap px-4 py-2.5">
                             {format(new Date(p.created_at), "dd MMM yyyy")}
                           </td>
-                          <td className="px-4 py-2.5 font-mono text-xs">
+                          <td className="whitespace-nowrap px-4 py-2.5 font-mono text-xs">
                             {p.invoice_number}
                           </td>
-                          <td className="px-4 py-2.5 capitalize">{p.method}</td>
-                          <td className="px-4 py-2.5">₹{p.total_amount}</td>
-                          <td className="px-4 py-2.5">
+                          <td className="whitespace-nowrap px-4 py-2.5 capitalize">{p.method}</td>
+                          <td className="whitespace-nowrap px-4 py-2.5">₹{p.total_amount}</td>
+                          <td className="whitespace-nowrap px-4 py-2.5">
                             {p.is_refunded ? "Refunded" : "Paid"}
                           </td>
-                          <td className="px-4 py-2.5">
+                          <td className="whitespace-nowrap px-4 py-2.5 text-right">
                             <Link
                               href={`${basePath.split("/members")[0]}/payments/${p.id}/invoice`}
                               className="text-primary hover:underline"
@@ -313,7 +328,7 @@ export function MemberProfileView({
 
       {tab === "Medical" && (
         <Card>
-          <CardContent className="p-6 text-sm text-muted-foreground">
+          <CardContent className="p-6 text-sm text-muted-foreground leading-relaxed">
             Medical details (blood group, conditions, emergency contact) are
             stored on this member's record. Full inline editing arrives in the
             Trainer module pass — for now this data is visible to trainers and
@@ -324,7 +339,7 @@ export function MemberProfileView({
 
       {tab === "Documents" && (
         <Card>
-          <CardContent className="p-6 text-sm text-muted-foreground">
+          <CardContent className="p-6 text-sm text-muted-foreground leading-relaxed">
             Certificates, transformation photos, and medical documents uploaded
             for this member will appear here. Upload UI ships with the Trainer
             module.
@@ -345,12 +360,14 @@ function InfoRow({
   value: string | null | undefined;
 }) {
   return (
-    <div>
+    <div className="flex flex-col min-w-0">
       <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        {Icon && <Icon className="h-3.5 w-3.5" />}
-        {label}
+        {Icon && <Icon className="h-3.5 w-3.5 shrink-0" />}
+        <span className="truncate">{label}</span>
       </p>
-      <p className="mt-1 text-sm font-medium capitalize">{value || "—"}</p>
+      <p className="mt-1 break-words text-sm font-medium capitalize">
+        {value || "—"}
+      </p>
     </div>
   );
 }

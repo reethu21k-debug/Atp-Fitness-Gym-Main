@@ -65,7 +65,7 @@ Function cron schedules), see **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
 | Backend | Supabase (Postgres, Auth, Row Level Security, Storage, Realtime, Edge Functions, `pg_cron`) |
 | Image storage | Cloudinary (member/trainer photos, transformation photos, certificates) |
 | Email | Resend |
-| WhatsApp / SMS | Twilio |
+| WhatsApp | Meta WhatsApp Cloud API (direct) |
 | AI | Anthropic Claude (`lib/services/anthropic.ts`) |
 | PDF / Excel export | jsPDF + jspdf-autotable, SheetJS (`xlsx`) |
 | Testing | Vitest |
@@ -97,7 +97,7 @@ hooks/                      Reusable hooks (e.g. realtime chat subscription)
 lib/
   actions/                  Server Actions — one file per module, all
                             permission-checked at the top before touching data
-  services/                 Cloudinary, Email (Resend), WhatsApp (Twilio),
+  services/                 Cloudinary, Email (SMTP), WhatsApp (Meta Cloud API),
                             Anthropic, QR token signing
   supabase/                 Browser / server / admin Supabase clients
   utils/                    Pure, testable business logic (fitness formulas,
@@ -145,7 +145,8 @@ See `.env.example` for the full template. Grouped by what they're for:
 - **Auth providers** — Google and Apple OAuth credentials (email/phone auth
   work with just Supabase, no extra config needed)
 - **Resend** — API key + from-address for transactional email
-- **Twilio** — account SID, auth token, WhatsApp/SMS from-numbers
+- **Meta WhatsApp Cloud API** — access token, phone number ID, approved
+  message template names
 - **Anthropic** — API key for AI features (workout/diet generation, chat
   assistant, risk analysis, revenue forecast narratives)
 - **Payments** — Razorpay/Stripe keys (present in the template for future
@@ -234,7 +235,7 @@ Full step-by-step guide: **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
 
 Short version: Supabase project (Postgres + migrations + Edge Functions +
 cron schedules) → Cloudinary account (unsigned upload preset) → Resend +
-Twilio accounts → Vercel project pointed at this repo with the same env
+Meta WhatsApp app → Vercel project pointed at this repo with the same env
 vars as `.env.local`.
 
 ---

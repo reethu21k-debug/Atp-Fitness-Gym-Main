@@ -96,6 +96,9 @@ export interface MemberDetails {
   updated_at: string;
 }
 
+/** Lifecycle state of a single membership period (migration 0025). */
+export type MembershipPeriodStatus = "active" | "expired" | "cancelled";
+
 export interface MemberMembership {
   id: string;
   member_id: string;
@@ -103,6 +106,10 @@ export interface MemberMembership {
   plan_id: string | null;
   start_date: string;
   end_date: string;
+  /** Lifecycle state. Flipped to 'expired' by expire_due_memberships(). */
+  status: MembershipPeriodStatus;
+  activated_at: string | null;
+  expired_at: string | null;
   amount: number;
   discount_amount: number;
   amount_paid: number;
@@ -113,6 +120,58 @@ export interface MemberMembership {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+}
+
+// ============================================================================
+// SUBSCRIPTION NOTIFICATION LEDGER (migration 0025)
+//
+// The persistent idempotency record behind the WhatsApp subscription alerts.
+// One row per (membership_id, kind, channel), enforced by a unique index.
+// ============================================================================
+
+export type SubscriptionNotificationKind = "activation" | "expiry";
+export type SubscriptionNotificationStatus = "pending" | "sent" | "failed" | "skipped";
+
+export interface SubscriptionNotification {
+  id: string;
+  membership_id: string;
+  gym_id: string;
+  member_id: string;
+  kind: SubscriptionNotificationKind;
+  channel: string;
+  status: SubscriptionNotificationStatus;
+  recipient_phone: string | null;
+  /** Meta's wamid.* identifier for a successful send. */
+  provider_message_id: string | null;
+  /** Latest delivery status reported by the Meta webhook (sent/delivered/read/failed). */
+  provider_status: string | null;
+  attempts: number;
+  max_attempts: number;
+  last_error_code: string | null;
+  last_error: string | null;
+  first_attempt_at: string | null;
+  last_attempt_at: string | null;
+  /** Doubles as the retry schedule and the claim lease. */
+  next_attempt_at: string;
+  sent_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ExpireDueMembershipRow {
+  membership_id: string;
+  member_id: string;
+  gym_id: string;
+  /** False when the member already holds a newer period covering today. */
+  should_notify: boolean;
+}
+
+export interface DueSubscriptionNotificationRow {
+  id: string;
+  membership_id: string;
+  kind: SubscriptionNotificationKind;
+  channel: string;
+  attempts: number;
 }
 
 export interface MemberDocument {
@@ -1152,6 +1211,7 @@ export interface Database {
       member_details: { Row: MemberDetails; Insert: Partial<MemberDetails>; Update: Partial<MemberDetails> };
       member_memberships: { Row: MemberMembership; Insert: Partial<MemberMembership>; Update: Partial<MemberMembership> };
       member_documents: { Row: MemberDocument; Insert: Partial<MemberDocument>; Update: Partial<MemberDocument> };
+      subscription_notifications: { Row: SubscriptionNotification; Insert: Partial<SubscriptionNotification>; Update: Partial<SubscriptionNotification> };
       payments: { Row: Payment; Insert: Partial<Payment>; Update: Partial<Payment> };
       payment_splits: { Row: PaymentSplit; Insert: Partial<PaymentSplit>; Update: Partial<PaymentSplit> };
       refunds: { Row: Refund; Insert: Partial<Refund>; Update: Partial<Refund> };
@@ -1220,6 +1280,26 @@ export interface Database {
       current_tenant_id: { Args: Record<string, never>; Returns: string };
       current_gym_id: { Args: Record<string, never>; Returns: string };
       next_invoice_number: { Args: { p_gym_id: string }; Returns: string };
+      // Subscription lifecycle RPCs (migration 0025). All are `returns setof`,
+      // so an empty array means "refused" / "nothing due" — never a null row.
+      claim_subscription_notification: {
+        Args: { p_membership_id: string; p_kind: SubscriptionNotificationKind; p_channel?: string; p_lease_seconds?: number };
+        Returns: SubscriptionNotification[];
+      };
+      complete_subscription_notification: {
+        Args: {
+          p_id: string;
+          p_success: boolean;
+          p_message_id?: string | null;
+          p_recipient_phone?: string | null;
+          p_error_code?: string | null;
+          p_error?: string | null;
+          p_retryable?: boolean;
+        };
+        Returns: SubscriptionNotification[];
+      };
+      expire_due_memberships: { Args: { p_limit?: number }; Returns: ExpireDueMembershipRow[] };
+      due_subscription_notifications: { Args: { p_limit?: number }; Returns: DueSubscriptionNotificationRow[] };
       next_receipt_number: { Args: { p_gym_id: string }; Returns: string };
       validate_coupon: {
         Args: { p_gym_id: string; p_code: string; p_member_id: string; p_purchase_amount: number };

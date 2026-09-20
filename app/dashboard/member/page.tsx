@@ -5,6 +5,7 @@ import { getCurrentProfile } from "@/lib/utils/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { getProgressHistory, getMemberHeightCm } from "@/lib/actions/trainer.actions";
 import { calculateBmi } from "@/lib/utils/fitness";
+import { getWelcomeMessage } from "@/lib/utils/welcome";
 import { StatCard } from "@/components/features/dashboard/stat-card";
 import { Card, CardContent } from "@/components/ui/card";
 import { MemberStatusBadge } from "@/components/features/members/status-badge";
@@ -28,7 +29,7 @@ export default async function MemberDashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Welcome back, {profile.full_name.split(" ")[0]}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{getWelcomeMessage(profile.role, profile.full_name)}</h1>
         <p className="mt-1 text-sm text-muted-foreground">Here's where things stand.</p>
       </div>
 
