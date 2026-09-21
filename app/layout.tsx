@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   title: { default: 'ATP Fitness — Train Different', template: '%s · ATP Fitness' },
   description:
     'ATP Fitness is a modern strength and conditioning gym in Anantapur. Personal training, group classes, and a members app to track it all.',
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
   openGraph: {
     title: 'ATP Fitness — Train Different',
     description: 'Personal training, group classes, and a members app to track it all.',
