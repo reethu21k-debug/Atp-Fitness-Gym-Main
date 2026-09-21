@@ -1,17 +1,17 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Check } from "lucide-react";
+import { Check, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { formatINR } from "@/lib/utils/format";
 import { getPublicMembershipPlans } from "@/lib/services/public-plans";
 
-// Universal perks true of every plan regardless of tier -- kept generic
-// (rather than per-plan bullet lists) since only name/price/duration/
-// description are owner-editable today; a per-plan feature checklist would
-// either need hardcoding (which silently goes stale as plans change) or a
-// schema/admin-UI addition to make it truly owner-editable too.
-const UNIVERSAL_FEATURES = ["Full gym access", "QR check-in & members app"];
+const UNIVERSAL_FEATURES = [
+  "Full gym access",
+  "QR check-in & members app",
+  "Free locker usage",
+  "Access to stretching area",
+];
 
 const FAQS = [
   { q: "Is there a free trial?", a: "Yes — walk in any day for a free trial session before you commit to a plan." },
@@ -26,58 +26,109 @@ export default async function PricingPage() {
   const plans = await getPublicMembershipPlans();
 
   return (
-    <div className="container px-6 py-20">
-      <div className="mx-auto mb-16 max-w-2xl text-center">
-        <h1 className="text-4xl font-semibold tracking-tight">Membership plans</h1>
-        <p className="mt-4 text-muted-foreground">Straightforward pricing. No per-class fees, no hidden charges.</p>
+    // Increased top padding (pt-40) to gracefully clear the floating header
+    <div className="relative min-h-screen overflow-hidden bg-background px-6 pt-40 pb-24 selection:bg-primary/30">
+      {/* --- Ambient Background Effects for Glassmorphism --- */}
+      <div className="pointer-events-none absolute -top-40 left-0 h-96 w-96 rounded-full bg-primary/10 bg-blend-multiply blur-[120px]" />
+      <div className="pointer-events-none absolute right-0 top-40 h-[30rem] w-[30rem] rounded-full bg-blue-500/5 bg-blend-multiply blur-[120px]" />
+      <div className="pointer-events-none absolute bottom-0 left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-primary/10 bg-blend-multiply blur-[120px]" />
+
+      <div className="relative z-10 mx-auto mb-20 max-w-3xl text-center">
+        {/* Changed to solid text to match the image precisely */}
+        <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
+          Elevate Your Fitness
+        </h1>
+        <p className="mt-6 text-lg text-muted-foreground sm:text-xl">
+          Straightforward pricing. No per-class fees, no hidden charges. 
+          Choose the plan that fits your journey.
+        </p>
       </div>
 
       {plans.length === 0 ? (
-        <p className="text-center text-muted-foreground">Plans are being updated — check back shortly.</p>
+        <p className="relative z-10 text-center text-lg text-muted-foreground">
+          Plans are being updated — check back shortly.
+        </p>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="relative z-10 mx-auto grid max-w-6xl gap-8 md:grid-cols-2 lg:grid-cols-3">
           {plans.map((plan) => (
             <Card
               key={plan.id}
-              className={cn("relative flex flex-col", plan.featured && "border-primary shadow-lg ring-1 ring-primary")}
+              className={cn(
+                "relative flex flex-col overflow-visible rounded-3xl transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl",
+                "border-white/20 bg-background/60 shadow-xl backdrop-blur-xl dark:bg-black/40",
+                plan.featured 
+                  ? "border-primary shadow-[0_0_40px_-10px_rgba(var(--primary),0.2)] ring-1 ring-primary" 
+                  : "border-border/50"
+              )}
             >
               {plan.featured && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground">
-                  Most popular
-                </span>
-              )}
-              <CardHeader>
-                <CardTitle>{plan.name}</CardTitle>
-                <div className="flex items-baseline gap-1 pt-2">
-                  <span className="text-3xl font-semibold">{formatINR(plan.price)}</span>
-                  <span className="text-sm text-muted-foreground">{plan.periodLabel}</span>
+                <div className="absolute -top-4 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-gradient-to-r from-primary to-blue-500 px-4 py-1.5 text-sm font-semibold text-white shadow-lg">
+                  <Sparkles className="h-4 w-4" />
+                  Most Popular
                 </div>
-                {plan.description && <p className="text-sm text-muted-foreground">{plan.description}</p>}
+              )}
+              
+              <CardHeader className="text-center pb-8 pt-10">
+                <CardTitle className="text-lg text-muted-foreground font-medium">{plan.name}</CardTitle>
+                {/* Stacked price and period to match the layout in the image */}
+                <div className="flex flex-col items-center justify-center pt-4">
+                  <span className="text-5xl font-bold tracking-tighter text-foreground">
+                    {formatINR(plan.price)}
+                  </span>
+                  <span className="text-sm font-medium text-muted-foreground/60 mt-2">
+                    {plan.periodLabel}
+                  </span>
+                </div>
+                {plan.description && (
+                  <p className="mt-4 text-xs text-muted-foreground">{plan.description}</p>
+                )}
               </CardHeader>
-              <CardContent className="flex flex-1 flex-col">
-                <ul className="flex-1 space-y-3">
+
+              <CardContent className="flex flex-1 flex-col justify-between p-8 pt-0">
+                <ul className="flex-1 space-y-4">
                   {UNIVERSAL_FEATURES.map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-sm">
-                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" /> {f}
+                    <li key={f} className="flex items-center gap-3 text-sm font-medium text-muted-foreground">
+                      <div className="rounded-full bg-primary/10 p-1">
+                        <Check className="h-3.5 w-3.5 text-primary" strokeWidth={3} />
+                      </div>
+                      <span>{f}</span>
                     </li>
                   ))}
                 </ul>
-                <Button className="mt-6 w-full" variant={plan.featured ? "default" : "outline"} asChild>
-                  <Link href="/contact">Book a free trial</Link>
-                </Button>
+                <div className="mt-8 pt-6 border-t border-border/50">
+                  <Button 
+                    className={cn(
+                      "w-full h-12 rounded-xl text-base font-semibold transition-all duration-300",
+                      plan.featured 
+                        ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-[0_0_20px_-5px_rgba(var(--primary),0.5)]" 
+                        // Faded primary button for non-featured to match the image UI
+                        : "bg-primary/40 text-primary-foreground hover:bg-primary/50 backdrop-blur-md"
+                    )} 
+                    asChild
+                  >
+                    <Link href="/contact">Book a free trial</Link>
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}
         </div>
       )}
 
-      <div className="mx-auto mt-24 max-w-2xl">
-        <h2 className="text-center text-2xl font-semibold tracking-tight">Frequently asked questions</h2>
-        <div className="mt-8 divide-y">
-          {FAQS.map((f) => (
-            <div key={f.q} className="py-5">
-              <h3 className="font-medium">{f.q}</h3>
-              <p className="mt-1.5 text-sm text-muted-foreground">{f.a}</p>
+      {/* --- FAQ Section --- */}
+      <div className="relative z-10 mx-auto mt-32 max-w-3xl rounded-3xl border border-white/20 bg-background/60 p-8 shadow-xl backdrop-blur-xl dark:bg-black/40 sm:p-12">
+        <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl text-center mb-10">
+          Frequently Asked Questions
+        </h2>
+        <div className="divide-y divide-border/50">
+          {FAQS.map((f, i) => (
+            <div key={i} className="group py-6 transition-all">
+              <h3 className="text-lg font-semibold text-foreground transition-colors group-hover:text-primary">
+                {f.q}
+              </h3>
+              <p className="mt-3 leading-relaxed text-muted-foreground">
+                {f.a}
+              </p>
             </div>
           ))}
         </div>
