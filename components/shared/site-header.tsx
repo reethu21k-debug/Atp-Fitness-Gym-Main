@@ -18,6 +18,10 @@ import {
 import { signOut } from "@/lib/actions/auth.actions";
 import type { AppRole } from "@/types/database";
 
+/* ---------------------------------------------------------------------- */
+/*  Config                                                                */
+/* ---------------------------------------------------------------------- */
+
 const NAV_LINKS = [
   { href: "/features", label: "Features" },
   { href: "/pricing", label: "Pricing" },
@@ -43,55 +47,145 @@ export interface SiteHeaderAuthUser {
 /** Desktop breakpoint = Tailwind `lg` (1024px). Below it the hamburger menu is used. */
 const DESKTOP_QUERY = "(min-width: 1024px)";
 
+/**
+ * The header switches to its compact state past SCROLL_ON and back below SCROLL_OFF.
+ * Two different thresholds (instead of one) stop it flickering when the scroll
+ * position hovers around a single pixel value.
+ */
+const SCROLL_ON = 24;
+const SCROLL_OFF = 8;
+
+/* ---------------------------------------------------------------------- */
+/*  Shared styles                                                         */
+/* ---------------------------------------------------------------------- */
+
+/** The light sweep that slides across the orange "Book trial" buttons on hover */
+const SWEEP =
+  "pointer-events-none absolute inset-y-0 left-0 w-1/2 -translate-x-full -skew-x-12 bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-700 group-hover:translate-x-[300%] motion-reduce:hidden";
+
+/** Outlined glass buttons in the mobile sheet. Text colour is pinned on hover so it never fades out. */
+const MOBILE_OUTLINE =
+  "h-12 rounded-full border-border/60 bg-background/50 font-eyebrow text-sm font-semibold uppercase tracking-widest text-foreground backdrop-blur-md transition-all hover:border-primary hover:bg-primary/5 hover:text-primary";
+
+/** Glass card surface used by the mobile nav rows and the mobile user card */
+const MOBILE_GLASS = "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.35)] backdrop-blur-md";
+
+/* ---------------------------------------------------------------------- */
+/*  Small helpers                                                         */
+/* ---------------------------------------------------------------------- */
+
+const roleLabel = (role: AppRole) => ROLE_LABEL[role] ?? "Member";
+const initialOf = (name: string) => name.trim().charAt(0).toUpperCase() || "?";
+const firstNameOf = (name: string) => name.trim().split(/\s+/)[0] ?? "";
+
+function UserAvatar({ user, className }: { user: SiteHeaderAuthUser; className: string }) {
+  return (
+    <Avatar className={className}>
+      <AvatarImage src={user.avatarUrl ?? undefined} alt={user.fullName} />
+      <AvatarFallback>{initialOf(user.fullName)}</AvatarFallback>
+    </Avatar>
+  );
+}
+
+function BookTrialButton({
+  variant,
+  onClick,
+}: {
+  variant: "desktop" | "mobile";
+  onClick?: () => void;
+}) {
+  const mobile = variant === "mobile";
+  return (
+    <Button
+      asChild
+      className={
+        mobile
+          ? "group relative h-12 overflow-hidden rounded-full bg-primary font-eyebrow text-sm font-bold uppercase tracking-widest text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:scale-[1.02] hover:text-primary-foreground"
+          : "group relative h-10 overflow-hidden rounded-full bg-primary px-6 font-eyebrow text-xs font-bold uppercase tracking-widest text-primary-foreground shadow-[0_4px_14px_0_rgba(255,106,0,0.25)] transition-all duration-300 hover:-translate-y-0.5 hover:text-primary-foreground hover:shadow-[0_8px_24px_rgba(255,106,0,0.35)]"
+      }
+    >
+      <Link href="/contact" onClick={onClick}>
+        <span className="relative z-10 flex items-center gap-2">
+          {mobile ? "Book a Free Trial" : "Book Trial"}
+          <ArrowRight
+            className={`${mobile ? "h-4 w-4" : "h-3.5 w-3.5"} transition-transform duration-300 group-hover:translate-x-1`}
+          />
+        </span>
+        {/* Light sweep on hover */}
+        <span aria-hidden className={SWEEP} />
+      </Link>
+    </Button>
+  );
+}
+
+/* ---------------------------------------------------------------------- */
+/*  Header                                                                */
+/* ---------------------------------------------------------------------- */
+
 export function SiteHeader({ user }: { user?: SiteHeaderAuthUser | null }) {
   const pathname = usePathname() ?? "";
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const progressRef = useRef<HTMLSpanElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const mobileNavRef = useRef<HTMLElement>(null);
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
   // Scroll state + reading-progress line (progress is written straight to the DOM, no re-renders)
   useEffect(() => {
-    let ticking = false;
+    let frame = 0;
 
     const update = () => {
+      frame = 0;
       const y = window.scrollY;
-      setScrolled(y > 20);
+      setScrolled((prev) => (prev ? y > SCROLL_OFF : y > SCROLL_ON));
 
       const max = document.documentElement.scrollHeight - window.innerHeight;
-      const progress = max > 0 ? Math.min(y / max, 1) : 0;
+      const progress = max > 0 ? Math.min(Math.max(y / max, 0), 1) : 0;
       if (progressRef.current) {
         progressRef.current.style.transform = `scaleX(${progress})`;
       }
-      ticking = false;
     };
 
     const onScroll = () => {
-      if (!ticking) {
-        ticking = true;
-        requestAnimationFrame(update);
-      }
+      if (!frame) frame = requestAnimationFrame(update);
     };
 
     update();
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll);
+
+    // Page height changes without any scrolling (images load, route changes) —
+    // keep the progress line honest in those cases too.
+    const observer =
+      typeof ResizeObserver !== "undefined" ? new ResizeObserver(onScroll) : null;
+    observer?.observe(document.body);
+
     return () => {
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
+      observer?.disconnect();
+      if (frame) cancelAnimationFrame(frame);
     };
   }, []);
 
-  // Mobile menu: lock body scroll, close on Escape, close when resized up to desktop
+  // Mobile menu: lock body scroll, move focus in, close on Escape (and hand focus back),
+  // close when resized up to desktop
   useEffect(() => {
     if (!open) return;
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
+    // Keyboard users land on the first link instead of being left on the page behind the sheet
+    mobileNavRef.current?.querySelector<HTMLElement>("a")?.focus({ preventScroll: true });
+
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") {
+        setOpen(false);
+        toggleRef.current?.focus();
+      }
     };
     const mq = window.matchMedia(DESKTOP_QUERY);
     const onChange = (e: MediaQueryListEvent) => {
@@ -198,13 +292,13 @@ export function SiteHeader({ user }: { user?: SiteHeaderAuthUser | null }) {
             <div className="hidden items-center gap-2 justify-self-end lg:flex">
               {user ? (
                 <DropdownMenu>
-                  <DropdownMenuTrigger className="flex items-center gap-2 rounded-full border border-border/50 bg-background/60 py-1 pl-1 pr-3 transition-colors hover:bg-background/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                    <Avatar className="h-8 w-8 ring-2 ring-primary/40">
-                      <AvatarImage src={user.avatarUrl ?? undefined} alt={user.fullName} />
-                      <AvatarFallback>{user.fullName.charAt(0).toUpperCase()}</AvatarFallback>
-                    </Avatar>
+                  <DropdownMenuTrigger
+                    aria-label={`Account menu for ${user.fullName}`}
+                    className="flex items-center gap-2 rounded-full border border-border/50 bg-background/60 py-1 pl-1 pr-3 transition-colors hover:bg-background/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <UserAvatar user={user} className="h-8 w-8 ring-2 ring-primary/40" />
                     <span className="hidden max-w-[160px] truncate font-eyebrow text-xs font-semibold uppercase tracking-wide text-foreground xl:inline">
-                      {ROLE_LABEL[user.role]} {user.fullName.split(" ")[0]}
+                      {roleLabel(user.role)} {firstNameOf(user.fullName)}
                     </span>
                     <ChevronDown className="h-3.5 w-3.5 text-foreground/60" />
                   </DropdownMenuTrigger>
@@ -214,17 +308,18 @@ export function SiteHeader({ user }: { user?: SiteHeaderAuthUser | null }) {
                     className="w-60 rounded-2xl border-border/50 bg-background/80 p-1.5 shadow-2xl backdrop-blur-2xl backdrop-saturate-150"
                   >
                     <DropdownMenuLabel className="flex items-center gap-3 px-2 py-2">
-                      <Avatar className="h-9 w-9 ring-2 ring-primary/30">
-                        <AvatarImage src={user.avatarUrl ?? undefined} alt={user.fullName} />
-                        <AvatarFallback>{user.fullName.charAt(0).toUpperCase()}</AvatarFallback>
-                      </Avatar>
+                      <UserAvatar user={user} className="h-9 w-9 ring-2 ring-primary/30" />
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold text-foreground">{user.fullName}</p>
-                        <p className="text-xs font-normal text-muted-foreground">{ROLE_LABEL[user.role]}</p>
+                        <p className="text-xs font-normal text-muted-foreground">{roleLabel(user.role)}</p>
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild className="cursor-pointer rounded-xl">
+                    {/* Focus colours are set explicitly so the row never washes out on hover */}
+                    <DropdownMenuItem
+                      asChild
+                      className="cursor-pointer rounded-xl focus:bg-primary/10 focus:text-foreground"
+                    >
                       <Link href="/dashboard">
                         <LayoutDashboard className="h-4 w-4" /> Dashboard
                       </Link>
@@ -249,28 +344,14 @@ export function SiteHeader({ user }: { user?: SiteHeaderAuthUser | null }) {
                   >
                     Sign In
                   </Link>
-                  <Button
-                    className="group relative h-10 overflow-hidden rounded-full bg-primary px-6 font-eyebrow text-xs font-bold uppercase tracking-widest text-primary-foreground shadow-[0_4px_14px_0_rgba(255,106,0,0.25)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(255,106,0,0.35)]"
-                    asChild
-                  >
-                    <Link href="/contact">
-                      <span className="relative z-10 flex items-center gap-2">
-                        Book Trial
-                        <ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-1" />
-                      </span>
-                      {/* Light sweep on hover */}
-                      <span
-                        aria-hidden
-                        className="pointer-events-none absolute inset-y-0 left-0 w-1/2 -translate-x-full -skew-x-12 bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-700 group-hover:translate-x-[300%] motion-reduce:hidden"
-                      />
-                    </Link>
-                  </Button>
+                  <BookTrialButton variant="desktop" />
                 </>
               )}
             </div>
 
             {/* Mobile / tablet toggle (animated hamburger) */}
             <button
+              ref={toggleRef}
               type="button"
               onClick={() => setOpen((v) => !v)}
               aria-label={open ? "Close menu" : "Open menu"}
@@ -302,7 +383,7 @@ export function SiteHeader({ user }: { user?: SiteHeaderAuthUser | null }) {
           <span
             ref={progressRef}
             aria-hidden
-            className="pointer-events-none absolute bottom-0 left-0 h-[2px] w-full origin-left bg-primary/80"
+            className="pointer-events-none absolute bottom-0 left-0 h-[2px] w-full origin-left bg-primary/80 will-change-transform"
             style={{ transform: "scaleX(0)" }}
           />
         </div>
@@ -334,7 +415,7 @@ export function SiteHeader({ user }: { user?: SiteHeaderAuthUser | null }) {
 
         <div className="relative h-full overflow-y-auto overscroll-contain">
           <div className="mx-auto flex min-h-full w-full max-w-md flex-col justify-center gap-8 px-5 pb-10 pt-28 sm:px-8">
-            <nav aria-label="Mobile" className="flex flex-col gap-3">
+            <nav ref={mobileNavRef} aria-label="Mobile" className="flex flex-col gap-3">
               {NAV_LINKS.map((link, i) => {
                 const active = isActive(link.href);
                 return (
@@ -350,7 +431,7 @@ export function SiteHeader({ user }: { user?: SiteHeaderAuthUser | null }) {
                       href={link.href}
                       onClick={() => setOpen(false)}
                       aria-current={active ? "page" : undefined}
-                      className={`group flex items-center justify-between rounded-2xl border px-5 py-4 font-eyebrow text-lg font-semibold uppercase tracking-widest shadow-[inset_0_1px_0_0_rgba(255,255,255,0.35)] backdrop-blur-md transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                      className={`group flex items-center justify-between rounded-2xl border px-5 py-4 font-eyebrow text-lg font-semibold uppercase tracking-widest transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${MOBILE_GLASS} ${
                         active
                           ? "border-primary/40 bg-primary/10 text-foreground"
                           : "border-border/40 bg-background/50 text-foreground/80 hover:border-primary/40 hover:bg-background/70 hover:text-foreground"
@@ -359,7 +440,7 @@ export function SiteHeader({ user }: { user?: SiteHeaderAuthUser | null }) {
                       {link.label}
                       <ChevronRight
                         className={`h-5 w-5 text-primary transition-all duration-300 ${
-                          active ? "opacity-100" : "-translate-x-2 opacity-0 group-hover:translate-x-0 group-hover:opacity-100"
+                          active ? "opacity-100" : "-translate-x-2 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 group-focus-visible:translate-x-0 group-focus-visible:opacity-100"
                         }`}
                       />
                     </Link>
@@ -377,29 +458,23 @@ export function SiteHeader({ user }: { user?: SiteHeaderAuthUser | null }) {
             >
               {user ? (
                 <>
-                  <div className="flex items-center gap-3 rounded-2xl border border-border/40 bg-background/50 p-3 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.35)] backdrop-blur-md">
-                    <Avatar className="h-11 w-11 ring-2 ring-primary/40">
-                      <AvatarImage src={user.avatarUrl ?? undefined} alt={user.fullName} />
-                      <AvatarFallback>{user.fullName.charAt(0).toUpperCase()}</AvatarFallback>
-                    </Avatar>
+                  <div className={`flex items-center gap-3 rounded-2xl border border-border/40 bg-background/50 p-3 ${MOBILE_GLASS}`}>
+                    <UserAvatar user={user} className="h-11 w-11 ring-2 ring-primary/40" />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-foreground">{user.fullName}</p>
-                      <p className="text-xs text-muted-foreground">{ROLE_LABEL[user.role]}</p>
+                      <p className="text-xs text-muted-foreground">{roleLabel(user.role)}</p>
                     </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    className="h-12 rounded-full border-border/60 bg-background/50 font-eyebrow text-sm font-semibold uppercase tracking-widest text-foreground backdrop-blur-md transition-all hover:border-primary hover:bg-primary/5 hover:text-primary"
-                    asChild
-                    onClick={() => setOpen(false)}
-                  >
-                    <Link href="/dashboard">Dashboard</Link>
+                  <Button variant="outline" className={MOBILE_OUTLINE} asChild>
+                    <Link href="/dashboard" onClick={() => setOpen(false)}>
+                      Dashboard
+                    </Link>
                   </Button>
                   <form action={signOut}>
                     <Button
                       type="submit"
                       variant="outline"
-                      className="h-12 w-full rounded-full border-destructive/40 bg-background/50 font-eyebrow text-sm font-semibold uppercase tracking-widest text-destructive backdrop-blur-md transition-all hover:bg-destructive/5"
+                      className="h-12 w-full rounded-full border-destructive/40 bg-background/50 font-eyebrow text-sm font-semibold uppercase tracking-widest text-destructive backdrop-blur-md transition-all hover:bg-destructive/5 hover:text-destructive"
                     >
                       Sign out
                     </Button>
@@ -407,30 +482,12 @@ export function SiteHeader({ user }: { user?: SiteHeaderAuthUser | null }) {
                 </>
               ) : (
                 <>
-                  <Button
-                    variant="outline"
-                    className="h-12 rounded-full border-border/60 bg-background/50 font-eyebrow text-sm font-semibold uppercase tracking-widest text-foreground backdrop-blur-md transition-all hover:border-primary hover:bg-primary/5 hover:text-primary"
-                    asChild
-                    onClick={() => setOpen(false)}
-                  >
-                    <Link href="/login">Sign In</Link>
-                  </Button>
-                  <Button
-                    className="group relative h-12 overflow-hidden rounded-full bg-primary font-eyebrow text-sm font-bold uppercase tracking-widest text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:scale-[1.02]"
-                    asChild
-                    onClick={() => setOpen(false)}
-                  >
-                    <Link href="/contact">
-                      <span className="relative z-10 flex items-center gap-2">
-                        Book a Free Trial
-                        <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-                      </span>
-                      <span
-                        aria-hidden
-                        className="pointer-events-none absolute inset-y-0 left-0 w-1/2 -translate-x-full -skew-x-12 bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-700 group-hover:translate-x-[300%] motion-reduce:hidden"
-                      />
+                  <Button variant="outline" className={MOBILE_OUTLINE} asChild>
+                    <Link href="/login" onClick={() => setOpen(false)}>
+                      Sign In
                     </Link>
                   </Button>
+                  <BookTrialButton variant="mobile" onClick={() => setOpen(false)} />
                 </>
               )}
             </div>
