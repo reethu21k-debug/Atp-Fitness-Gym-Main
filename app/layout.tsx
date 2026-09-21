@@ -8,11 +8,32 @@ import './globals.css';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
+// Never throws: skips empty, whitespace-only, or malformed values
+function getBaseUrl(): string {
+  const candidates = [
+    process.env.NEXT_PUBLIC_APP_URL,
+    process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : undefined,
+  ];
+
+  for (const c of candidates) {
+    const value = c?.trim();
+    if (!value) continue;
+    try {
+      return new URL(value).toString();
+    } catch {
+      // not a valid absolute URL (e.g. missing https://), try the next one
+    }
+  }
+  return 'http://localhost:3000';
+}
+
 export const metadata: Metadata = {
   title: { default: 'ATP Fitness — Train Different', template: '%s · ATP Fitness' },
   description:
     'ATP Fitness is a modern strength and conditioning gym in Anantapur. Personal training, group classes, and a members app to track it all.',
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'),
+  metadataBase: new URL(getBaseUrl()),
   openGraph: {
     title: 'ATP Fitness — Train Different',
     description: 'Personal training, group classes, and a members app to track it all.',
@@ -40,7 +61,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
       </head>
-      {/* Added explicit background and text color classes below */}
       <body className={`${inter.variable} font-sans bg-white text-[#1A1A1A] min-h-screen`}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
           <QueryProvider>

@@ -1,17 +1,4 @@
--- ============================================================================
--- GymOS -- Combined Migration Script (0001-0020)
--- Run this as a single script in the Supabase SQL editor.
--- NOTE: cron.schedule statements contain <PROJECT_REF> / <CRON_SECRET>
--- placeholders that must be replaced with real values first.
--- ============================================================================
 
--- ===========================================================================
--- FILE: 0001_core_schema.sql
--- ===========================================================================
--- ============================================================================
--- GymOS Core Schema — Part 1
--- Multi-tenancy, Roles, Profiles, RLS foundation
--- ============================================================================
 
 create extension if not exists "uuid-ossp";
 create extension if not exists "pgcrypto";
