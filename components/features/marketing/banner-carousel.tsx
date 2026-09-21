@@ -4,8 +4,8 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-// Banner images live directly in /public at 2172x724px (3:1 ratio).
 const BANNERS = [
+  { src: "/banner-21.png", alt: "ATP Fitness banner 1", href: "" },
   { src: "/banner-1.png", alt: "ATP Fitness banner 1", href: "" },
   { src: "/banner-3.png", alt: "ATP Fitness banner 3", href: "" },
   { src: "/banner-4.png", alt: "ATP Fitness banner 4", href: "" },
