@@ -40,7 +40,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
       </head>
-      {/* Added explicit background and text color classes below */}
       <body className={`${inter.variable} font-sans bg-white text-[#1A1A1A] min-h-screen`}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
           <QueryProvider>
