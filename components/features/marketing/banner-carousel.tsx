@@ -56,11 +56,18 @@ export function BannerCarousel() {
 
   // Touch swipe (Mobile users will use this instead of arrows)
   const onTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
+    const touch = e.touches[0];
+    if (!touch) return;
+    touchStartX.current = touch.clientX;
   };
   const onTouchEnd = (e: React.TouchEvent) => {
     if (touchStartX.current === null) return;
-    const delta = e.changedTouches[0].clientX - touchStartX.current;
+    const touch = e.changedTouches[0];
+    if (!touch) {
+      touchStartX.current = null;
+      return;
+    }
+    const delta = touch.clientX - touchStartX.current;
     touchStartX.current = null;
     if (Math.abs(delta) < SWIPE_THRESHOLD_PX) return;
     goTo(delta < 0 ? index + 1 : index - 1);
