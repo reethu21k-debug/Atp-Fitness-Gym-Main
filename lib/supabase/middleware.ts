@@ -6,17 +6,9 @@ const PUBLIC_ROUTES = [
   "/", "/features", "/pricing", "/gallery", "/blog", "/testimonials",
   "/contact", "/about", "/login", "/register", "/register-gym",
   "/forgot-password", "/reset-password",
-  // Self-authenticating via their own secret header/HMAC -- must stay
-  // reachable without a browser session (pg_cron / email links have none).
-  // NOTE: "/api/cron" covers every scheduled job, including
-  // marketing-automation, which was previously missing from this list -- so
-  // middleware redirected it to /login and the job silently never ran.
   "/api/invoices/download",
   "/api/cron",
-  // CRON_SECRET-authenticated diagnostic endpoint. It used to be skipped by
-  // the middleware matcher entirely, which left it publicly reachable.
   "/api/test-whatsapp",
-  // Meta delivery-status callbacks, verified by X-Hub-Signature-256 HMAC.
   "/api/webhooks/",
 ];
 
@@ -28,7 +20,6 @@ const ROLE_HOME: Record<string, string> = {
   member: "/dashboard/member",
 };
 
-// Which role-prefixed dashboard segments each role is allowed into.
 const ROLE_ACCESS: Record<string, string[]> = {
   super_admin: ["platform", "owner", "reception", "trainer", "member"],
   gym_owner: ["owner"],
@@ -37,34 +28,60 @@ const ROLE_ACCESS: Record<string, string[]> = {
   member: ["member"],
 };
 
+function getSupabaseUrl(): string | null {
+  const raw = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  if (!raw) return null;
+  try {
+    new URL(raw);
+    return raw;
+  } catch {
+    return null;
+  }
+}
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
-  const supabase = createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
-        },
-      },
-    }
-  );
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
   const path = request.nextUrl.pathname;
   const isPublic = PUBLIC_ROUTES.some((r) => path === r || (r !== "/" && path.startsWith(r)));
+
+  const supabaseUrl = getSupabaseUrl();
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+
+  if (!supabaseUrl || !supabaseKey) {
+    console.error(
+      "[middleware] NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY is missing, empty, or invalid"
+    );
+    if (isPublic) return supabaseResponse;
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+
+  const supabase = createServerClient<Database>(supabaseUrl, supabaseKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+        supabaseResponse = NextResponse.next({ request });
+        cookiesToSet.forEach(({ name, value, options }) =>
+          supabaseResponse.cookies.set(name, value, options)
+        );
+      },
+    },
+  });
+
+  // If Supabase is unreachable, treat the visitor as signed out instead of throwing.
+  let user: Awaited<ReturnType<typeof supabase.auth.getUser>>["data"]["user"] = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+  } catch (err) {
+    console.error("[middleware] supabase.auth.getUser() failed:", err);
+  }
 
   if (!user && !isPublic) {
     const redirectTarget = path + request.nextUrl.search; // keep query string (e.g. invoice id/token)
