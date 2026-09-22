@@ -59,28 +59,26 @@ const ROSTER = [
   },
 ];
 
-// Plates get lighter as you move along the bar: 25 → 20 → 15
-const STEPS = [
+// Why members stay — one feature image per card, real pixel dimensions so
+// Next/Image can reserve the exact aspect ratio (no crop, no stretch).
+const FEATURE_CARDS = [
   {
-    plate: "25",
-    size: "h-28 w-28 sm:h-40 sm:w-40",
-    step: "Book in",
-    detail:
-      "Walk in or fill out the contact form — we'll set up a facility tour and a free first session.",
+    image: "/Home/feature_card1.png",
+    alt: "Goal-first programming",
+    width: 1454,
+    height: 806,
   },
   {
-    plate: "20",
-    size: "h-24 w-24 sm:h-32 sm:w-32",
-    step: "Pick your plan",
-    detail:
-      "Choose monthly, quarterly, or annual tiers. Bolt on personal training or class packs anytime.",
+    image: "/Home/feature_card2.png",
+    alt: "Progress you can see",
+    width: 1596,
+    height: 779,
   },
   {
-    plate: "15",
-    size: "h-20 w-20 sm:h-24 sm:w-24",
-    step: "Load and go",
-    detail:
-      "Scan the QR at the desk. Your trainer instantly reviews attendance and adjusts your program.",
+    image: "/Home/feature_card3.png",
+    alt: "Coaches on the floor, not behind a desk",
+    width: 1580,
+    height: 779,
   },
 ];
 
@@ -334,65 +332,46 @@ export default function HomePage() {
       </section>
 
       {/* ================================================================ */}
-      {/*  THREE PLATES — how to get started                               */}
+      {/*  WHY MEMBERS STAY                                                */}
       {/* ================================================================ */}
       <section
-        aria-labelledby="steps-title"
+        aria-labelledby="benefits-title"
         className="relative z-10 mx-auto mt-20 max-w-7xl sm:mt-28"
       >
         <div className={cn("rounded-[2rem] p-6 sm:p-10 lg:p-14", glass)}>
           <div className="mx-auto mb-12 max-w-2xl text-center sm:mb-16">
             <h2
-              id="steps-title"
+              id="benefits-title"
               className="text-balance text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl"
             >
-              Three plates. Zero friction.
+              Why members stay
             </h2>
             <p className="mt-4 text-pretty text-base text-muted-foreground sm:text-lg">
-              Same bar, heaviest step first — here&apos;s exactly what getting
-              started looks like.
+              Not another card swipe and an empty rack — a floor built around
+              your goals, your progress, and your time.
             </p>
           </div>
 
-          <ol className="relative grid gap-14 sm:grid-cols-3 sm:gap-6">
-            {/* The bar the plates slide onto */}
-            <div className="pointer-events-none absolute left-0 right-0 top-[5.5rem] hidden h-2 -translate-y-1/2 rounded-full bg-gradient-to-r from-transparent via-border to-transparent sm:block" />
-
-            {STEPS.map((s, i) => (
-              <li
-                key={s.step}
-                className="relative flex flex-col items-center text-center"
+          <div className="grid gap-6 sm:grid-cols-3 sm:gap-8">
+            {FEATURE_CARDS.map((f) => (
+              <div
+                key={f.image}
+                className={cn(
+                  "overflow-hidden rounded-3xl bg-background/40 ring-1 ring-white/10 backdrop-blur-md dark:ring-white/10",
+                  lift
+                )}
               >
-                <div className="flex items-center justify-center sm:h-44">
-                  <div
-                    className={cn(
-                      s.size,
-                      "flex items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/40 p-1 shadow-[0_0_30px_-8px_hsl(var(--primary)/0.5)]"
-                    )}
-                  >
-                    <div className="flex h-full w-full items-center justify-center rounded-full bg-background">
-                      <span className="text-2xl font-bold text-primary sm:text-3xl">
-                        {s.plate}
-                        <span className="ml-0.5 text-xs font-semibold text-muted-foreground">
-                          kg
-                        </span>
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <p className="mt-5 text-sm font-medium text-muted-foreground">
-                  Step {i + 1}
-                </p>
-                <h3 className="mt-1 text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-                  {s.step}
-                </h3>
-                <p className="mt-3 max-w-xs text-base leading-relaxed text-muted-foreground">
-                  {s.detail}
-                </p>
-              </li>
+                <Image
+                  src={f.image}
+                  alt={f.alt}
+                  width={f.width}
+                  height={f.height}
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                  className="block h-auto w-full"
+                />
+              </div>
             ))}
-          </ol>
+          </div>
         </div>
       </section>
 
