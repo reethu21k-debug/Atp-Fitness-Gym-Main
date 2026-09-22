@@ -84,8 +84,7 @@ const STEPS = [
   },
 ];
 
-const DIRECTIONS_URL =
-  "https://www.google.com/maps/dir//ATP+Fitness,+r+Lodge,+TCR+Towers,+15%2F704,+Main+Rd,+opp.+jonna+iron+mart,+Kamalanagar,+Anantapur,+Andhra+Pradesh+515001/@17.4751744,78.413824,12z/data=!4m8!4m7!1m0!1m5!1m1!1s0x3bb14b00001c2a63:0x8f972d79a7f55ba6!2m2!1d77.6029104!2d14.6809501?entry=ttu&g_ep=EgoyMDI2MDkxNi4wIKXMDSoASAFQAw%3D%3D";
+const DIRECTIONS_URL = "https://maps.app.goo.gl/MgDqHjbYz5gzprad9";
 
 // Facts shown under the hero. Keep these honest — swap in real numbers.
 const HERO_STATS = [

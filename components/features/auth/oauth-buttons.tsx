@@ -2,7 +2,8 @@
 
 import { Button } from "@/components/ui/button";
 import { signInWithOAuth } from "@/lib/actions/auth.actions";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
+import { Loader2 } from "lucide-react";
 
 function GoogleIcon() {
   return (
@@ -25,6 +26,14 @@ function AppleIcon() {
 
 export function OAuthButtons() {
   const [isPending, startTransition] = useTransition();
+  const [loadingProvider, setLoadingProvider] = useState<"google" | "apple" | null>(null);
+
+  const handleOAuthSignIn = (provider: "google" | "apple") => {
+    setLoadingProvider(provider);
+    startTransition(async () => {
+      await signInWithOAuth(provider);
+    });
+  };
 
   return (
     <div className="grid grid-cols-2 gap-3">
@@ -32,19 +41,30 @@ export function OAuthButtons() {
         type="button"
         variant="outline"
         disabled={isPending}
-        onClick={() => startTransition(() => signInWithOAuth("google"))}
+        className="h-11 bg-background/50 backdrop-blur-sm border-border/50 hover:bg-background/80 hover:shadow-md transition-all duration-300 flex items-center justify-center gap-2"
+        onClick={() => handleOAuthSignIn("google")}
       >
-        <GoogleIcon />
-        Google
+        {isPending && loadingProvider === "google" ? (
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        ) : (
+          <GoogleIcon />
+        )}
+        <span className="font-medium">Google</span>
       </Button>
+      
       <Button
         type="button"
         variant="outline"
         disabled={isPending}
-        onClick={() => startTransition(() => signInWithOAuth("apple"))}
+        className="h-11 bg-background/50 backdrop-blur-sm border-border/50 hover:bg-background/80 hover:shadow-md transition-all duration-300 flex items-center justify-center gap-2"
+        onClick={() => handleOAuthSignIn("apple")}
       >
-        <AppleIcon />
-        Apple
+        {isPending && loadingProvider === "apple" ? (
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        ) : (
+          <AppleIcon />
+        )}
+        <span className="font-medium">Apple</span>
       </Button>
     </div>
   );
