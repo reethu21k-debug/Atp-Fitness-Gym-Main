@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowUpRight, Check, Clock, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import PodcastVideo from "@/components/about/PodcastVideo";
 
 // "What to expect" — three different points, so three different cards
 const LEAD = {
@@ -275,6 +276,24 @@ export default function AboutPage() {
             </p>
           </div>
         </div>
+      </section>
+
+      {/* --- Founder podcast --- */}
+      <section
+        aria-labelledby="podcast-title"
+        className="relative z-10 mx-auto mt-16 max-w-4xl sm:mt-24"
+      >
+        <h2
+          id="podcast-title"
+          className="mb-8 text-center text-2xl font-bold tracking-tight text-foreground sm:text-3xl lg:text-4xl"
+        >
+          Hear It From Our Founder
+        </h2>
+        <PodcastVideo />
+        <p className="mx-auto mt-4 max-w-xl text-center text-sm text-muted-foreground">
+          "The reality of owning a gym" — Ashwath, Founder of ATP Fitness, on
+          what actually goes into running a gym like this.
+        </p>
       </section>
 
       {/* --- What to expect (bento: different sizes, different content) --- */}

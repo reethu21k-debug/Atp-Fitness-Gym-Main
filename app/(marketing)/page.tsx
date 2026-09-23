@@ -11,6 +11,10 @@ import {
   ScanLine,
   Dumbbell,
   Users,
+  Sparkles,
+  Target,
+  TrendingUp,
+  UserCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
@@ -59,7 +63,7 @@ const ROSTER = [
   },
 ];
 
-// Why members stay — one feature image per card, real pixel dimensions so
+// Why members stay — one feature image per row, real pixel dimensions so
 // Next/Image can reserve the exact aspect ratio (no crop, no stretch).
 const FEATURE_CARDS = [
   {
@@ -67,18 +71,33 @@ const FEATURE_CARDS = [
     alt: "Goal-first programming",
     width: 1454,
     height: 806,
+    title: "Goal-first programming",
+    description:
+      "Every plan starts with your goal — strength, fat loss, or performance — then works backward into weekly training built around it.",
+    icon: Target,
+    accent: "bg-primary/10 text-primary",
   },
   {
     image: "/Home/feature_card2.png",
     alt: "Progress you can see",
     width: 1596,
     height: 779,
+    title: "Progress you can see",
+    description:
+      "Lifts, weigh-ins, and body composition logged every session, so gains show up as numbers on a screen — not guesswork in a mirror.",
+    icon: TrendingUp,
+    accent: "bg-blue-500/10 text-blue-500",
   },
   {
     image: "/Home/feature_card3.png",
     alt: "Coaches on the floor, not behind a desk",
     width: 1580,
     height: 779,
+    title: "Coaches on the floor, not behind a desk",
+    description:
+      "Certified trainers correct your form in real time and rework your plan every two weeks based on what's actually working.",
+    icon: UserCheck,
+    accent: "bg-primary/10 text-primary",
   },
 ];
 
@@ -164,85 +183,115 @@ export default function HomePage() {
         aria-labelledby="hero-title"
         className="relative z-10 mx-auto max-w-7xl"
       >
-        <div className="mx-auto max-w-4xl text-center">
-          {/* Live status pill — reflects the real opening hours */}
-          <div
-            className={cn(
-              "mx-auto inline-flex items-center gap-2.5 rounded-full px-4 py-2 text-sm font-semibold",
-              glass
-            )}
-          >
-            <span className="relative flex h-2 w-2">
-              {status.open && (
-                <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75 motion-safe:animate-ping" />
+        {/*
+          Mascot shows at every breakpoint: small and above the headline on
+          mobile, full size in its own column to the right on desktop
+          (two-column split from lg up).
+        */}
+        <div className="grid items-center gap-2 lg:grid-cols-[1.08fr_0.92fr] lg:gap-4">
+          {/*
+            Mascot — shown on every breakpoint now. Small and up top on
+            mobile (so it doesn't shove the CTA far down the fold), full
+            size in its own column on desktop. `unoptimized` preserves the
+            GIF's animation (Next/Image would otherwise flatten it to one
+            static frame).
+          */}
+          <div className="relative order-first mx-auto -mb-2 w-40 sm:w-48 lg:order-last lg:mx-0 lg:mb-0 lg:w-auto">
+            <div className="pointer-events-none absolute left-1/2 top-1/2 h-40 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-br from-primary/15 via-primary/5 to-transparent blur-2xl sm:h-48 sm:w-48 lg:h-[22rem] lg:w-[22rem]" />
+            <div className="pointer-events-none absolute left-1/2 top-1/2 hidden h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/10 lg:block" />
+            <Image
+              src="/weightlifter-transparent.gif"
+              alt="Cartoon illustration of a weightlifter mid-press, representing the strength floor"
+              width={1600}
+              height={1200}
+              unoptimized
+              priority
+              className="relative mx-auto h-auto w-full drop-shadow-2xl lg:w-[85%] lg:max-w-sm xl:max-w-md"
+            />
+          </div>
+
+          <div className="mx-auto max-w-4xl text-center lg:mx-0 lg:max-w-none lg:text-left">
+            {/* Live status pill — reflects the real opening hours */}
+            <div
+              className={cn(
+                "mx-auto inline-flex items-center gap-2.5 rounded-full px-4 py-2 text-sm font-semibold lg:mx-0",
+                glass
               )}
-              <span
-                className={cn(
-                  "relative inline-flex h-2 w-2 rounded-full",
-                  status.open ? "bg-emerald-500" : "bg-muted-foreground"
-                )}
-              />
-            </span>
-            <span className="text-foreground">{status.label}</span>
-            <span className="text-muted-foreground">·</span>
-            <span className="font-medium text-muted-foreground">
-              {status.note}
-            </span>
-          </div>
-
-          <h1
-            id="hero-title"
-            className="mt-8 text-balance font-bold tracking-tighter text-foreground"
-          >
-            <span className="block text-6xl leading-[0.95] sm:text-7xl lg:text-8xl">
-              Train{" "}
-              <span className="relative inline-block text-primary">
-                Different.
-                {/* hand-drawn style underline */}
-                <svg
-                  aria-hidden
-                  viewBox="0 0 300 14"
-                  preserveAspectRatio="none"
-                  className="absolute -bottom-1 left-0 h-2.5 w-full text-primary/40 sm:h-3"
-                >
-                  <path
-                    d="M2 9 C 60 2, 120 13, 180 6 S 260 4, 298 8"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </span>
-            </span>
-            <span className="mt-6 block text-xl font-medium tracking-tight text-muted-foreground sm:text-2xl lg:text-3xl">
-              Anantapur&apos;s elite strength floor.
-            </span>
-          </h1>
-
-          <p className="mx-auto mt-6 max-w-2xl text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
-            An uncompromising strength floor and certified personal coaching —
-            backed by a member app that logs every rep, meal, and milestone.
-          </p>
-
-          <div className="mt-9 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
-            <Button asChild className={cn(primaryButton, "h-14 px-9 text-lg")}>
-              <Link href="/contact" className="flex items-center gap-2">
-                Book a free trial <ArrowRight className="h-5 w-5" aria-hidden />
-              </Link>
-            </Button>
-            <Button
-              asChild
-              variant="outline"
-              className={cn(glassButton, "h-14 text-lg")}
             >
-              <Link href="/pricing">See membership plans</Link>
-            </Button>
+              <span className="relative flex h-2 w-2">
+                {status.open && (
+                  <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75 motion-safe:animate-ping" />
+                )}
+                <span
+                  className={cn(
+                    "relative inline-flex h-2 w-2 rounded-full",
+                    status.open ? "bg-emerald-500" : "bg-muted-foreground"
+                  )}
+                />
+              </span>
+              <span className="text-foreground">{status.label}</span>
+              <span className="text-muted-foreground">·</span>
+              <span className="font-medium text-muted-foreground">
+                {status.note}
+              </span>
+            </div>
+
+            <h1
+              id="hero-title"
+              className="mt-8 text-balance font-bold tracking-tighter text-foreground"
+            >
+              <span className="block text-6xl leading-[0.95] sm:text-7xl lg:text-7xl xl:text-8xl">
+                Train{" "}
+                <span className="relative inline-block text-primary">
+                  Different.
+                  {/* hand-drawn style underline */}
+                  <svg
+                    aria-hidden
+                    viewBox="0 0 300 14"
+                    preserveAspectRatio="none"
+                    className="absolute -bottom-1 left-0 h-2.5 w-full text-primary/40 sm:h-3"
+                  >
+                    <path
+                      d="M2 9 C 60 2, 120 13, 180 6 S 260 4, 298 8"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </span>
+              </span>
+              <span className="mt-6 block text-xl font-medium tracking-tight text-muted-foreground sm:text-2xl lg:text-3xl">
+                Anantapur&apos;s elite strength floor.
+              </span>
+            </h1>
+
+            <p className="mx-auto mt-6 max-w-2xl text-pretty text-base leading-relaxed text-muted-foreground lg:mx-0 sm:text-lg">
+              An uncompromising strength floor and certified personal coaching
+              — backed by a member app that logs every rep, meal, and
+              milestone.
+            </p>
+
+            <div className="mt-9 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center lg:justify-start">
+              <Button asChild className={cn(primaryButton, "h-14 px-9 text-lg")}>
+                <Link href="/contact" className="flex items-center gap-2">
+                  Book a free trial <ArrowRight className="h-5 w-5" aria-hidden />
+                </Link>
+              </Button>
+              <Button
+                asChild
+                variant="outline"
+                className={cn(glassButton, "h-14 text-lg")}
+              >
+                <Link href="/pricing">See membership plans</Link>
+              </Button>
+            </div>
+
+            <p className="mt-5 text-sm text-muted-foreground">
+              First session on us · Drop in anytime for a guided tour.
+            </p>
           </div>
 
-          <p className="mt-5 text-sm text-muted-foreground">
-            First session on us · Drop in anytime for a guided tour.
-          </p>
         </div>
 
         {/* Stat strip — one glass bar instead of four separate boxes */}
