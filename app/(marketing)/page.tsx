@@ -493,9 +493,6 @@ export default function HomePage() {
         </figure>
       </section>
 
-      {/* ================================================================ */}
-      {/*  FINAL CTA                                                       */}
-      {/* ================================================================ */}
       <section
         aria-labelledby="cta-title"
         className={cn(
